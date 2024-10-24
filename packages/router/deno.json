@@ -1,0 +1,15 @@
+{
+  "name": "@sapling/router",
+  "description": "A micro router for Deno",
+  "license": "MIT",
+  "version": "0.0.1",
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^1.0.5"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "exclude": ["node_modules"],
+  "lock": false,
+  "nodeModulesDir": "auto"
+}

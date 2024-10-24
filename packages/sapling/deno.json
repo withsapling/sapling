@@ -1,0 +1,17 @@
+{
+  "name": "@sapling/sapling",
+  "description": "A micro SSR framework",
+  "license": "MIT",
+  "version": "0.0.1",
+  "imports": {
+    "@hexagon/proper-tags": "jsr:@hexagon/proper-tags@^2.0.2",
+    "@unocss/core": "npm:@unocss/core@^0.63.6",
+    "@unocss/preset-uno": "npm:@unocss/preset-uno@0.63.6"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "exclude": ["node_modules"],
+  "lock": false,
+  "nodeModulesDir": "auto"
+}
