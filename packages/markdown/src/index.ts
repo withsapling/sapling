@@ -3,7 +3,6 @@ import { gfm, gfmHtml } from "micromark-extension-gfm";
 import { codeToHtml } from "shiki";
 
 interface ThemeOptions {
-  theme?: string;
   light?: string;
   dark?: string;
 }
@@ -41,7 +40,6 @@ export async function renderMarkdown(
 
       const highlighted = await codeToHtml(decodedCode, {
         lang,
-        theme: themes?.theme,
         themes: {
           light: themes?.light || "github-light",
           dark: themes?.dark || "github-dark",
