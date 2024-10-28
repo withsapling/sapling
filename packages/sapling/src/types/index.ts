@@ -1,6 +1,5 @@
 import type { UserConfig } from "@unocss/core";
 
-
 export interface LayoutProps {
   /**
    * Pass an optional custom UnoCSS config
@@ -13,11 +12,11 @@ export interface LayoutProps {
   /**
    * The head content
    */
-  head?: string;
+  head?: TemplateStringsArray;
   /**
    * The body content
    */
-  children: string;
+  children: TemplateStringsArray;
 	/**
 	 * Provide a custom body class
 	 */

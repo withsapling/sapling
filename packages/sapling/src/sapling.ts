@@ -1,6 +1,6 @@
 import { createGenerator } from "@unocss/core";
 import presetUno from "@unocss/preset-uno";
-import { html } from "@hexagon/proper-tags";
+import { html } from "@hono/hono/html";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 
