@@ -27,9 +27,17 @@ export class Router {
 	}
 
 	private add(method: string, path: string, handler: RouteHandler): Router {
-		const pattern = new URLPattern({ pathname: path });
+		// Create patterns for both with and without trailing slash
+		const patterns = [
+			new URLPattern({ pathname: path }),
+			new URLPattern({ pathname: path.endsWith('/') ? path : path + '/' })
+		];
+		
 		const routes = this.routes.get(method);
-		routes?.push({ pattern, handler });
+		patterns.forEach(pattern => {
+			routes?.push({ pattern, handler });
+		});
+		
 		return this;
 	}
 
@@ -58,7 +66,7 @@ export class Router {
 		this.notFoundHandler = handler;
 		return this;
 	}
-
+	
 	async handle(req: Request): Promise<Response> {
 		const method = req.method;
 		const url = req.url;
