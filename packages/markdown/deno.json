@@ -1,0 +1,17 @@
+{
+  "name": "@sapling/markdown",
+  "description": "A markdown parser for Sapling sites or Deno projects",
+  "license": "MIT",
+  "version": "0.0.2",
+  "imports": {
+    "micromark": "npm:micromark@^4.0.0",
+    "micromark-extension-gfm": "npm:micromark-extension-gfm@^3.0.0",
+    "shiki": "npm:shiki@^1.22.2"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "exclude": ["node_modules"],
+  "lock": false,
+  "nodeModulesDir": "auto"
+}
