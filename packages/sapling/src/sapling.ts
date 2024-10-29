@@ -4,16 +4,6 @@ import { html } from "@hono/hono/html";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 
-// Helper function to render HTML
-export function render(html: string): Response {
-	return new Response(html, {
-		status: 200,
-		headers: {
-			"content-type": "text/html; charset=UTF-8",
-		},
-	});
-}
-
 // Layout function adapted for raw Deno
 export async function Layout(props: LayoutProps): Promise<string> {
   // UnoCSS config

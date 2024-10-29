@@ -1,4 +1,4 @@
-import { render, Layout } from "./sapling.ts";
+import { Layout } from "./sapling.ts";
 
 // export html and raw helpers from hono
 export { html, raw } from "@hono/hono/html";
@@ -7,4 +7,4 @@ export { html, raw } from "@hono/hono/html";
 export type { LayoutProps } from "./types/index.ts";
 
 // export functions
-export { render, Layout };
+export { Layout };
