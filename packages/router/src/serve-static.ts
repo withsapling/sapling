@@ -5,16 +5,21 @@ import { StaticFileCache } from "./cache.ts";
  * @param staticDir The directory to serve files from
  * @param options Optional configuration for static file serving
  */
+interface StaticFileHandler {
+  (req: Request): Promise<Response>;
+  cache: StaticFileCache;
+}
+
 export function serveStatic(staticDir: string | URL, options: {
   baseUrl?: string;
   notFoundHandler?: (req: Request) => Response | Promise<Response>;
   dev?: boolean;
-} = {}): (req: Request) => Promise<Response> {
+} = {}): StaticFileHandler {
   const baseDir = staticDir instanceof URL ? staticDir : new URL(staticDir, import.meta.url);
   const baseUrl = options.baseUrl?.replace(/^\/|\/$/g, '') || '';
   const cache = new StaticFileCache();
   
-  return async (req: Request): Promise<Response> => {
+  const handler = async (req: Request): Promise<Response> => {
     try {
       // Extract the path from the URL, removing the baseUrl if present
       const url = new URL(req.url);
@@ -63,6 +68,8 @@ export function serveStatic(staticDir: string | URL, options: {
       return new Response('Internal Server Error', { status: 500 });
     }
   };
+
+  return Object.assign(handler, { cache });
 }
 
 /**
