@@ -1,181 +1,166 @@
-import { StaticFileCache } from "./cache.ts";
+import * as path from "jsr:@std/path";
+import { contentType as getContentType } from "jsr:@std/media-types/content-type";
+
+type StaticFileOptions = {
+  /** Directory to serve static files from */
+  directory: string;
+  /** Development mode disables caching */
+  dev?: boolean;
+  /** Optional URL path prefix for static files */
+  urlPrefix?: string;
+};
+
+type FileInfo = {
+  path: string;
+  size: number;
+  hash: string;
+  readable: ReadableStream;
+  close: () => void;
+};
 
 /**
- * Serves static files from a specified directory
- * @param staticDir The directory to serve files from
- * @param options Optional configuration for static file serving
- * @example
- * // Serve files from /static/* path
- * const staticHandler = serveStatic("./static", {
- *   baseUrl: "static",
- *   notFoundHandler: () => new Response("Not found", { status: 404 }),
- *   dev: true,
- * });
- * router.get("/static/*", staticHandler);
+ * Serves static files with caching support and optional development mode.
  * 
  * @example
- * // Serve files from root path /*
- * const staticHandler = serveStatic("./static", {
- *   notFoundHandler: () => new Response("Not found", { status: 404 }),
- *   dev: true,
- * });
- * router.get("/*", staticHandler);
+ * Basic usage:
+ * ```ts
+ * const router = new Router();
+ * 
+ * // Serve all files from the "public" directory at "/static/*"
+ * router.get("/static/*", serveStatic({ 
+ *   directory: "./public",
+ *   urlPrefix: "/static"
+ * }));
+ * ```
+ * 
+ * @example
+ * With development mode:
+ * ```ts
+ * // Disable caching in development
+ * router.get("/static/*", serveStatic({ 
+ *   directory: "./public",
+ *   urlPrefix: "/static",
+ *   dev: Deno.env.get("MODE") === "development"
+ * }));
+ * ```
+ * 
+ * @example
+ * Serve files from the root path:
+ * ```ts
+ * // Will serve files like favicon.ico, robots.txt from the public directory
+ * router.get("/*", serveStatic({ 
+ *   directory: "./public"
+ * }));
+ * ```
  */
-interface StaticFileHandler {
-  (req: Request): Promise<Response>;
-  cache: StaticFileCache;
-}
+export function serveStatic(options: StaticFileOptions) {
+  const fileCache = new Map<string, { hash: string; mtime: number }>();
+  const { directory, dev = false, urlPrefix = "" } = options;
 
-export function serveStatic(staticDir: string | URL, options: {
-  baseUrl?: string;
-  notFoundHandler?: (req: Request) => Response | Promise<Response>;
-  dev?: boolean;
-} = {}): StaticFileHandler {
-  // Convert string paths to absolute URLs
-  const baseDir = staticDir instanceof URL 
-    ? staticDir 
-    : new URL(staticDir, `file://${Deno.cwd()}/`);
-    
-  // Verify the directory exists
-  try {
-    const dirInfo = Deno.statSync(baseDir);
-    if (!dirInfo.isDirectory) {
-      throw new Error(`${baseDir} is not a directory`);
-    }
-  } catch (error) {
-    console.error(error);
-    throw new Error(
-      `Static directory ${baseDir} does not exist`
-    );
-  }
-
-  const baseUrl = options.baseUrl?.replace(/^\/|\/$/g, '') || '';
-  const cache = new StaticFileCache();
-  
-  const handler = async (req: Request): Promise<Response> => {
+  async function getFileInfo(filepath: string): Promise<FileInfo | null> {
     try {
-      const url = new URL(req.url);
-      let path = decodeURIComponent(url.pathname);
+      const file = await Deno.open(filepath);
+      const stat = await Deno.stat(filepath);
       
-      // Remove leading slash and normalize path
-      path = path.replace(/^\//, '').replace(/\.\./g, '');
-      
-      if (baseUrl && !path.startsWith(baseUrl)) {
-        return options.notFoundHandler?.(req) ?? 
-          new Response('Not Found', { status: 404 });
-      }
-      
-      if (baseUrl) {
-        path = path.slice(baseUrl.length + 1);
-      }
-
-      const filePath = new URL(path, baseDir);
-      
-      // Verify file exists before trying to read it
-      try {
-        const fileInfo = await Deno.stat(filePath);
-        if (!fileInfo.isFile) {
-          return options.notFoundHandler?.(req) ?? 
-            new Response('Not Found', { status: 404 });
+      // Check cache in production mode
+      if (!dev && fileCache.has(filepath)) {
+        const cached = fileCache.get(filepath)!;
+        if (cached.mtime === stat.mtime?.getTime()) {
+          return {
+            path: filepath,
+            size: stat.size,
+            hash: cached.hash,
+            readable: (await Deno.open(filepath)).readable,
+            close: () => file.close(),
+          };
         }
-      } catch {
-        return options.notFoundHandler?.(req) ?? 
-          new Response('Not Found', { status: 404 });
       }
 
-      const file = await cache.readFile(filePath.pathname);
-      
-      if (!file) {
-        return options.notFoundHandler?.(req) ?? 
-          new Response('Not Found', { status: 404 });
-      }
+      // Calculate hash for ETag
+      const hash = await crypto.subtle.digest(
+        "SHA-1",
+        new Uint8Array(await file.readable.getReader().read().then(r => r.value || new Uint8Array()))
+      );
+      const hashHex = Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
 
-      // Check if file is unmodified
-      if (cache.isNotModified(req, file)) {
-        file.close();
-        return new Response(null, { 
-          status: 304,
-          headers: cache.createCacheHeaders(file, options.dev)
+      // Cache the hash in production
+      if (!dev) {
+        fileCache.set(filepath, {
+          hash: hashHex,
+          mtime: stat.mtime?.getTime() || 0,
         });
       }
 
-      // Get the file's content type
-      const contentType = getContentType(path);
-      const headers = cache.createCacheHeaders(file, options.dev);
-      headers.set('content-type', contentType);
+      // Open a new file handle for the response
+      const responseFile = await Deno.open(filepath);
 
-      return new Response(file.readable, { headers });
-    } catch (error) {
-      console.error('Error serving static file:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      return {
+        path: filepath,
+        size: stat.size,
+        hash: hashHex,
+        readable: responseFile.readable,
+        close: () => {
+          file.close();
+          responseFile.close();
+        },
+      };
+    } catch {
+      return null;
     }
+  }
+
+  return async function staticFileHandler(req: Request) {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
+    const url = new URL(req.url);
+    let pathname = decodeURIComponent(url.pathname);
+    
+    // Remove URL prefix if specified
+    if (urlPrefix && pathname.startsWith(urlPrefix)) {
+      pathname = pathname.slice(urlPrefix.length);
+    }
+
+    // Prevent directory traversal
+    const normalizedPath = path.normalize(pathname);
+    if (normalizedPath.includes("..")) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    const filepath = path.join(directory, normalizedPath);
+    const file = await getFileInfo(filepath);
+
+    if (!file) {
+      return new Response("Not Found", { status: 404 });
+    }
+
+    const headers = new Headers({
+      "Content-Type": getContentType(path.extname(filepath)) || "application/octet-stream",
+      "Content-Length": String(file.size),
+    });
+
+    // Handle caching
+    if (!dev) {
+      headers.set("ETag", `W/"${file.hash}"`);
+      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+
+      const ifNoneMatch = req.headers.get("If-None-Match");
+      if (ifNoneMatch === `W/"${file.hash}"`) {
+        file.close();
+        return new Response(null, { status: 304, headers });
+      }
+    } else {
+      headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    }
+
+    if (req.method === "HEAD") {
+      file.close();
+      return new Response(null, { status: 200, headers });
+    }
+
+    return new Response(file.readable, { headers });
   };
-
-  return Object.assign(handler, { cache });
-}
-
-/**
- * Gets the content type based on file extension
- */
-function getContentType(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() || '';
-  const contentTypes: Record<string, string> = {
-    'aac': 'audio/aac',
-    'avi': 'video/x-msvideo',
-    'avif': 'image/avif',
-    'av1': 'video/av1',
-    'bin': 'application/octet-stream',
-    'bmp': 'image/bmp',
-    'css': 'text/css',
-    'csv': 'text/csv',
-    'eot': 'application/vnd.ms-fontobject',
-    'epub': 'application/epub+zip',
-    'gif': 'image/gif',
-    'gz': 'application/gzip',
-    'htm': 'text/html',
-    'html': 'text/html',
-    'ico': 'image/x-icon',
-    'ics': 'text/calendar',
-    'jpeg': 'image/jpeg',
-    'jpg': 'image/jpeg',
-    'js': 'text/javascript',
-    'json': 'application/json',
-    'jsonld': 'application/ld+json',
-    'map': 'application/json',
-    'mid': 'audio/x-midi',
-    'midi': 'audio/x-midi',
-    'mjs': 'text/javascript',
-    'mp3': 'audio/mpeg',
-    'mp4': 'video/mp4',
-    'mpeg': 'video/mpeg',
-    'oga': 'audio/ogg',
-    'ogv': 'video/ogg',
-    'ogx': 'application/ogg',
-    'opus': 'audio/opus',
-    'otf': 'font/otf',
-    'pdf': 'application/pdf',
-    'png': 'image/png',
-    'rtf': 'application/rtf',
-    'svg': 'image/svg+xml',
-    'tif': 'image/tiff',
-    'tiff': 'image/tiff',
-    'ts': 'video/mp2t',
-    'ttf': 'font/ttf',
-    'txt': 'text/plain',
-    'wasm': 'application/wasm',
-    'webm': 'video/webm',
-    'weba': 'audio/webm',
-    'webp': 'image/webp',
-    'woff': 'font/woff',
-    'woff2': 'font/woff2',
-    'xhtml': 'application/xhtml+xml',
-    'xml': 'application/xml',
-    'zip': 'application/zip',
-    '3gp': 'video/3gpp',
-    '3g2': 'video/3gpp2',
-    'gltf': 'model/gltf+json',
-    'glb': 'model/gltf-binary'
-  };
-
-  return contentTypes[ext] || 'application/octet-stream';
 }
