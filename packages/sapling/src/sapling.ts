@@ -1,6 +1,6 @@
 import { createGenerator } from "@unocss/core";
 import presetUno from "@unocss/preset-uno";
-import { html } from "@hono/hono/html";
+import { html, raw } from "@hono/hono/html";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 
@@ -18,7 +18,7 @@ export async function Layout(props: LayoutProps): Promise<string> {
   }
   // Create the UnoCSS generator
   const generator = createGenerator(config);
-  // Generate the CSS from the provided children
+  // Generate the CSS from the provided children and body class
   const css = await generator.generate(`${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`);
 
   // Tailwind Reset Minified
@@ -38,9 +38,9 @@ export async function Layout(props: LayoutProps): Promise<string> {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
 			<meta name="generator" content="Sapling v0.1.0">
-      ${props.disableTailwindReset ? html`` : html`<style>${resetStyles}</style>`}
+      ${props.disableTailwindReset ? html`` : html`<style>${raw(resetStyles)}</style>`}
 			<!-- UnoCSS CSS -->
-      <style>${css.css}</style>
+      <style>${raw(css.css)}</style>
       ${props.head}
     </head>
     ${props.bodyClass ? html`<body class="${props.bodyClass}">` : html`<body>`}
