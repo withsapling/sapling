@@ -34,9 +34,21 @@ export function serveStatic(staticDir: string | URL, options: {
   // Convert string paths to absolute URLs
   const baseDir = staticDir instanceof URL 
     ? staticDir 
-    : new URL(`file://${Deno.cwd()}/${staticDir}`);
+    : new URL(staticDir, `file://${Deno.cwd()}/`);
     
-  // Normalize baseUrl by removing leading and trailing slashes
+  // Verify the directory exists
+  try {
+    const dirInfo = Deno.statSync(baseDir);
+    if (!dirInfo.isDirectory) {
+      throw new Error(`${baseDir} is not a directory`);
+    }
+  } catch (error) {
+    console.error(error);
+    throw new Error(
+      `Static directory ${baseDir} does not exist`
+    );
+  }
+
   const baseUrl = options.baseUrl?.replace(/^\/|\/$/g, '') || '';
   const cache = new StaticFileCache();
   
@@ -45,31 +57,37 @@ export function serveStatic(staticDir: string | URL, options: {
       const url = new URL(req.url);
       let path = decodeURIComponent(url.pathname);
       
-      // Remove leading slash
-      path = path.replace(/^\//, '');
+      // Remove leading slash and normalize path
+      path = path.replace(/^\//, '').replace(/\.\./g, '');
       
-      // Only apply baseUrl check if it's specified
       if (baseUrl && !path.startsWith(baseUrl)) {
-        return new Response('Not Found', { status: 404 });
+        return options.notFoundHandler?.(req) ?? 
+          new Response('Not Found', { status: 404 });
       }
       
-      // Remove baseUrl prefix if present
       if (baseUrl) {
         path = path.slice(baseUrl.length + 1);
       }
 
       const filePath = new URL(path, baseDir);
-
-      // Prevent directory traversal attacks
-      if (!filePath.pathname.startsWith(baseDir.pathname)) {
-        return new Response('Forbidden', { status: 403 });
+      
+      // Verify file exists before trying to read it
+      try {
+        const fileInfo = await Deno.stat(filePath);
+        if (!fileInfo.isFile) {
+          return options.notFoundHandler?.(req) ?? 
+            new Response('Not Found', { status: 404 });
+        }
+      } catch {
+        return options.notFoundHandler?.(req) ?? 
+          new Response('Not Found', { status: 404 });
       }
 
       const file = await cache.readFile(filePath.pathname);
       
       if (!file) {
         return options.notFoundHandler?.(req) ?? 
-               new Response('Not Found', { status: 404 });
+          new Response('Not Found', { status: 404 });
       }
 
       // Check if file is unmodified
