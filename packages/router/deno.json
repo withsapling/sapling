@@ -4,7 +4,9 @@
   "license": "MIT",
   "version": "0.0.6",
   "imports": {
-    "@std/fs": "jsr:@std/fs@^1.0.5"
+    "@std/fs": "jsr:@std/fs@^1.0.5",
+    "@std/media-types": "jsr:@std/media-types@^1.0.3",
+    "@std/path": "jsr:@std/path@^1.0.7"
   },
   "exports": {
     ".": "./src/index.ts"

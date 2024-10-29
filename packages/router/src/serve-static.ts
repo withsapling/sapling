@@ -1,5 +1,5 @@
-import * as path from "jsr:@std/path";
-import { contentType as getContentType } from "jsr:@std/media-types/content-type";
+import * as path from "@std/path";
+import { contentType as getContentType } from "@std/media-types/content-type";
 
 type StaticFileOptions = {
   /** Directory to serve static files from */
@@ -53,7 +53,7 @@ type FileInfo = {
  * }));
  * ```
  */
-export function serveStatic(options: StaticFileOptions) {
+export function serveStatic(options: StaticFileOptions): (req: Request) => Promise<Response> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
   const { directory, dev = false, urlPrefix = "" } = options;
 
