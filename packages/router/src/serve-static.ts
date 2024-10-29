@@ -4,6 +4,22 @@ import { StaticFileCache } from "./cache.ts";
  * Serves static files from a specified directory
  * @param staticDir The directory to serve files from
  * @param options Optional configuration for static file serving
+ * @example
+ * // Serve files from /static/* path
+ * const staticHandler = serveStatic("./static", {
+ *   baseUrl: "static",
+ *   notFoundHandler: () => new Response("Not found", { status: 404 }),
+ *   dev: true,
+ * });
+ * router.get("/static/*", staticHandler);
+ * 
+ * @example
+ * // Serve files from root path /*
+ * const staticHandler = serveStatic("./static", {
+ *   notFoundHandler: () => new Response("Not found", { status: 404 }),
+ *   dev: true,
+ * });
+ * router.get("/*", staticHandler);
  */
 interface StaticFileHandler {
   (req: Request): Promise<Response>;
@@ -15,25 +31,33 @@ export function serveStatic(staticDir: string | URL, options: {
   notFoundHandler?: (req: Request) => Response | Promise<Response>;
   dev?: boolean;
 } = {}): StaticFileHandler {
-  const baseDir = staticDir instanceof URL ? staticDir : new URL(staticDir, import.meta.url);
+  // Convert string paths to absolute URLs
+  const baseDir = staticDir instanceof URL 
+    ? staticDir 
+    : new URL(`file://${Deno.cwd()}/${staticDir}`);
+    
+  // Normalize baseUrl by removing leading and trailing slashes
   const baseUrl = options.baseUrl?.replace(/^\/|\/$/g, '') || '';
   const cache = new StaticFileCache();
   
   const handler = async (req: Request): Promise<Response> => {
     try {
-      // Extract the path from the URL, removing the baseUrl if present
       const url = new URL(req.url);
       let path = decodeURIComponent(url.pathname);
       
+      // Remove leading slash
+      path = path.replace(/^\//, '');
+      
+      // Only apply baseUrl check if it's specified
+      if (baseUrl && !path.startsWith(baseUrl)) {
+        return new Response('Not Found', { status: 404 });
+      }
+      
+      // Remove baseUrl prefix if present
       if (baseUrl) {
-        if (!path.startsWith('/' + baseUrl)) {
-          return new Response('Not Found', { status: 404 });
-        }
         path = path.slice(baseUrl.length + 1);
       }
 
-      // Remove leading slash and resolve the file path
-      path = path.replace(/^\//, '');
       const filePath = new URL(path, baseDir);
 
       // Prevent directory traversal attacks
