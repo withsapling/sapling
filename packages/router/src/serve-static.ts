@@ -9,7 +9,7 @@ export function serveStatic(staticDir: string | URL, options: {
   baseUrl?: string;
   notFoundHandler?: (req: Request) => Response | Promise<Response>;
   dev?: boolean;
-} = {}) {
+} = {}): (req: Request) => Promise<Response> {
   const baseDir = staticDir instanceof URL ? staticDir : new URL(staticDir, import.meta.url);
   const baseUrl = options.baseUrl?.replace(/^\/|\/$/g, '') || '';
   const cache = new StaticFileCache();
