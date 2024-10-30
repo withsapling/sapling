@@ -4,9 +4,11 @@
   "license": "MIT",
   "version": "0.0.4",
   "imports": {
+    "@clack/prompts": "npm:@clack/prompts@^0.7.0",
     "@hono/hono": "jsr:@hono/hono@^4.6.7",
     "@unocss/core": "npm:@unocss/core@^0.63.6",
-    "@unocss/preset-uno": "npm:@unocss/preset-uno@0.63.6"
+    "@unocss/preset-uno": "npm:@unocss/preset-uno@0.63.6",
+    "degit": "npm:degit@^2.8.4"
   },
   "tasks": {
     "init": "deno run -A src/init.ts init"

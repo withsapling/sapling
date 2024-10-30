@@ -1,5 +1,5 @@
-import { intro, outro, text, select } from 'npm:@clack/prompts';
-import degit from "npm:degit";
+import { intro, outro, text, select } from '@clack/prompts';
+import degit from "degit";
 
 const helloWorldRepo = "https://github.com/withsapling/examples/single-file/hello-world";
 const landingPageRepo = "https://github.com/withsapling/examples/single-file/playground-0";
