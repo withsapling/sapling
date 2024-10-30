@@ -2,7 +2,7 @@
   "name": "@sapling/sapling",
   "description": "A micro SSR framework",
   "license": "MIT",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "imports": {
     "@clack/prompts": "npm:@clack/prompts@^0.7.0",
     "@hono/hono": "jsr:@hono/hono@^4.6.7",

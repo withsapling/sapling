@@ -10,8 +10,8 @@ export type { LayoutProps } from "./types/index.ts";
 // export functions
 export { Layout };
 
-// Add CLI handling when run directly
-if (import.meta.main) {
+// Add CLI handling for both direct runs and JSR package runs
+if (import.meta.main || import.meta.url.includes("jsr.io/@sapling/sapling")) {
   const command = Deno.args[0];
 
   if (command === "init") {
