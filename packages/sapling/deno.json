@@ -2,7 +2,7 @@
   "name": "@sapling/sapling",
   "description": "A micro SSR framework",
   "license": "MIT",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "imports": {
     "@clack/prompts": "npm:@clack/prompts@^0.7.0",
     "@hono/hono": "jsr:@hono/hono@^4.6.7",
@@ -10,11 +10,9 @@
     "@unocss/preset-uno": "npm:@unocss/preset-uno@0.63.6",
     "degit": "npm:degit@^2.8.4"
   },
-  "tasks": {
-    "init": "deno run -A src/init.ts init"
-  },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./init": "./src/init.ts"
   },
   "exclude": ["node_modules"],
   "lock": false,
