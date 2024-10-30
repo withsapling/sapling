@@ -8,6 +8,9 @@
     "@unocss/core": "npm:@unocss/core@^0.63.6",
     "@unocss/preset-uno": "npm:@unocss/preset-uno@0.63.6"
   },
+  "tasks": {
+    "init": "deno run -A src/init.ts init"
+  },
   "exports": {
     ".": "./src/index.ts"
   },
