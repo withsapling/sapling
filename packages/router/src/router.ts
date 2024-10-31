@@ -3,7 +3,7 @@ import { walk } from "@std/fs";
 type RouteHandler = (
 	req: Request,
 	params: Record<string, string>,
-) => Response | Promise<Response>;
+) => Response | Promise<Response | null> | null;
 
 type Route = {
 	pattern: URLPattern;
@@ -12,7 +12,7 @@ type Route = {
 
 /**
  * A simple router for Deno. For advanced routing, use a framework like Hono.
- * 	
+ * 
  * @example
  * const router = new Router();
  * router.get("/", () => new Response("Hello, world!"));
@@ -21,12 +21,8 @@ type Route = {
 export class Router {
 	private routes: Map<string, Route[]> = new Map();
 
-	private notFoundHandler: RouteHandler = (req) => {
-		// Redirect to /404 while preserving the original URL in the search params
-		const notFoundUrl = new URL("/404", req.url);
-		notFoundUrl.searchParams.set("from", req.url);
-		return Response.redirect(notFoundUrl.toString(), 302);
-	};
+	private notFoundHandler: RouteHandler = () =>
+		new Response("Not found", { status: 404 });
 
 	constructor() {
 		// Initialize maps for different HTTP methods
@@ -76,32 +72,10 @@ export class Router {
 		return this;
 	}
 	
-	async handle(req: Request): Promise<Response> {
+	async handle(req: Request): Promise<Response | null> {
 		const method = req.method;
 		const url = req.url;
 
-		// Special case: don't redirect /404 to prevent infinite loops
-		if (new URL(url).pathname === "/404") {
-			const routes = this.routes.get(method);
-			if (!routes) {
-				return new Response("Method not allowed", { status: 405 });
-			}
-
-			for (const route of routes) {
-				const match = route.pattern.exec(url);
-				if (match) {
-					const groups = match.pathname.groups as Record<string, string | undefined>;
-					const params = Object.fromEntries(
-						Object.entries(groups).filter(([_, v]) => v !== undefined),
-					) as Record<string, string>;
-					return await route.handler(req, params);
-				}
-			}
-			// If /404 page is not found, return a basic 404 response
-			return new Response("Not Found", { status: 404 });
-		}
-
-		// Normal route handling
 		const routes = this.routes.get(method);
 		if (!routes) {
 			return new Response("Method not allowed", { status: 405 });
@@ -109,28 +83,24 @@ export class Router {
 
 		for (const route of routes) {
 			const match = route.pattern.exec(url);
-			// if match, extract params
 			if (match) {
-				const groups = match.pathname.groups as Record<
-					string,
-					string | undefined
-				>;
+				const groups = match.pathname.groups as Record<string, string | undefined>;
 				const params = Object.fromEntries(
 					Object.entries(groups).filter(([_, v]) => v !== undefined),
 				) as Record<string, string>;
-				return await route.handler(req, params);
+				
+				const response = await route.handler(req, params);
+				if (response === null) continue;
+				return response;
 			}
 		}
+		
 		return await this.notFoundHandler(req, {});
 	}
 }
 
 /**
- * A router for file-based routing.
- * 
- * @example
- * const router = new PageRouter(new URL("./pages"));
- * router.initialize();
+ * An extension of the Router class for file-based routing
  */
 export class PageRouter extends Router {
 	private pagesPath: string;

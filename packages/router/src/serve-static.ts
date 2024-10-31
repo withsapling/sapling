@@ -53,7 +53,7 @@ type FileInfo = {
  * }));
  * ```
  */
-export function serveStatic(options: StaticFileOptions): (req: Request) => Promise<Response> {
+export function serveStatic(options: StaticFileOptions): (req: Request) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
   const { directory, dev = false, urlPrefix = "" } = options;
 
@@ -132,9 +132,10 @@ export function serveStatic(options: StaticFileOptions): (req: Request) => Promi
 
     const filepath = path.join(directory, normalizedPath);
     const file = await getFileInfo(filepath);
-
+    
+    // if file not found, return null to let the router handle it
     if (!file) {
-      return new Response("Not Found", { status: 404 });
+      return null;
     }
 
     const headers = new Headers({
