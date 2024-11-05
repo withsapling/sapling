@@ -1,4 +1,5 @@
 import type { UserConfig } from "@unocss/core";
+import type { HtmlEscapedString } from "@hono/hono/utils/html";
 
 export interface LayoutProps {
   /**
@@ -12,11 +13,11 @@ export interface LayoutProps {
   /**
    * The head content
    */
-  head?: TemplateStringsArray;
+  head?: string | HtmlEscapedString | TemplateStringsArray;
   /**
    * The body content
    */
-  children: TemplateStringsArray;
+  children: string | HtmlEscapedString | TemplateStringsArray;
 	/**
 	 * Provide a custom body class
 	 */
