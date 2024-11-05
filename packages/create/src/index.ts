@@ -1,8 +1,9 @@
 import { intro, outro, text, select } from '@clack/prompts';
 import degit from "degit";
 
-const helloWorldRepo = "https://github.com/withsapling/examples/single-file/hello-world";
-const landingPageRepo = "https://github.com/withsapling/examples/single-file/playground-0";
+const basicsRepo = "https://github.com/withsapling/examples/basics";
+const helloWorldRepo = "https://github.com/withsapling/examples/single-file-hello-world";
+const landingPageRepo = "https://github.com/withsapling/examples/single-file-landing-page";
 // const simpleBlogRepo = "https://github.com/withsapling/examples/single-file/blog-0";
 
 // Export the init function so it can be called from other files
@@ -12,8 +13,9 @@ export async function init() {
   const repo = await select({
     message: "Select a project to clone:",
     options: [
-      { label: "Hello Word (blank)", value: helloWorldRepo },
-      { label: "Landing Page", value: landingPageRepo },
+      { label: "The Basics", value: basicsRepo },
+      { label: "Hello World (blank)", value: helloWorldRepo },
+      { label: "Landing Page (single file)", value: landingPageRepo },
     ],
   });
 
