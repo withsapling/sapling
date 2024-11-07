@@ -13,13 +13,13 @@ export interface LayoutProps {
   /**
    * The head content
    */
-  head?: string | HtmlEscapedString | TemplateStringsArray;
+  head?: string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
   /**
    * The body content
    */
-  children: string | HtmlEscapedString | TemplateStringsArray;
-	/**
-	 * Provide a custom body class
-	 */
-	bodyClass?: string;
+  children: string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
+  /**
+   * Provide a custom body class
+   */
+  bodyClass?: string;
 }
