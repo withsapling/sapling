@@ -15,10 +15,6 @@ export interface LayoutProps {
    */
   head?: string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
   /**
-   * The body content
-   */
-  children: string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
-  /**
    * Provide a custom body class
    */
   bodyClass?: string;

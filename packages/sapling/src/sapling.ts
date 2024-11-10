@@ -3,9 +3,18 @@ import presetUno from "@unocss/preset-uno";
 import { html, raw } from "@hono/hono/html";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
+import type { HtmlEscapedString } from "@hono/hono/utils/html";
 
-// Layout function adapted for raw Deno
-export async function Layout(props: LayoutProps): Promise<string> {
+/**
+ * The Layout function
+ * @param props - The layout props
+ * @param children - The children
+ * @returns The HTML
+ */
+export async function Layout(
+  props: LayoutProps,
+  children: string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray
+): Promise<string> {
   // UnoCSS config
   let config: UserConfig;
   // If no config is provided, use the default UnoCSS preset
@@ -19,7 +28,7 @@ export async function Layout(props: LayoutProps): Promise<string> {
   // Create the UnoCSS generator
   const generator = createGenerator(config);
   // Generate the CSS from the provided children and body class
-  const css = await generator.generate(`${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`);
+  const css = await generator.generate(`${props.bodyClass ? `${props.bodyClass} ` : ``} ${children}`);
 
   // Tailwind Reset Minified
   let resetStyles =
@@ -44,7 +53,7 @@ export async function Layout(props: LayoutProps): Promise<string> {
       ${props.head}
     </head>
     ${props.bodyClass ? html`<body class="${props.bodyClass}">` : html`<body>`}
-      ${props.children}
+      ${children}
     </body>
     </html>
   `;
