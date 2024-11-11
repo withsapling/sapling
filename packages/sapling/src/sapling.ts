@@ -25,9 +25,18 @@ import type { UserConfig } from "@unocss/core";
  * ```
  */
 export async function Layout(
-  children: HtmlContent,
-  props: LayoutProps = {},
+  // The first argument can be either props or children
+  propsOrChildren: LayoutProps | HtmlContent,
+  // The second argument can be either children or props
+  childrenOrProps: HtmlContent | LayoutProps = {},
 ): Promise<string> {
+  // Runtime check to determine if the first argument is props
+  const isPropsFirst = typeof propsOrChildren === 'object' && !('strings' in propsOrChildren);
+
+  // Extract the correct values based on how the function was called
+  const children = isPropsFirst ? childrenOrProps as HtmlContent : propsOrChildren as HtmlContent;
+  const props = isPropsFirst ? propsOrChildren as LayoutProps : childrenOrProps as LayoutProps;
+
   // UnoCSS config
   let config: UserConfig;
   // If no config is provided, use the default UnoCSS preset
