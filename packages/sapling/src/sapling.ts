@@ -11,7 +11,7 @@ import type { UserConfig } from "@unocss/core";
  * @returns The HTML
  */
 export async function Layout(
-  props: LayoutProps = {},
+  props: LayoutProps,
   children: HtmlContent
 ): Promise<string> {
   // UnoCSS config
