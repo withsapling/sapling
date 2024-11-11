@@ -4,7 +4,7 @@ import { Layout } from "./sapling.ts";
 export { html, raw } from "@hono/hono/html";
 
 // export types
-export type { LayoutProps } from "./types/index.ts";
+export type { LayoutProps, HtmlContent } from "./types/index.ts";
 
 // export functions
 export { Layout };

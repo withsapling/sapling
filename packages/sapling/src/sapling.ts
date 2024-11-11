@@ -1,9 +1,8 @@
 import { createGenerator } from "@unocss/core";
 import presetUno from "@unocss/preset-uno";
 import { html, raw } from "@hono/hono/html";
-import type { LayoutProps } from "./types/index.ts";
+import type { HtmlContent, LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
-import type { HtmlEscapedString } from "@hono/hono/utils/html";
 
 /**
  * The Layout function
@@ -13,7 +12,7 @@ import type { HtmlEscapedString } from "@hono/hono/utils/html";
  */
 export async function Layout(
   props: LayoutProps,
-  children: string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray
+  children: HtmlContent
 ): Promise<string> {
   // UnoCSS config
   let config: UserConfig;

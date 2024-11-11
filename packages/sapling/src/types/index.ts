@@ -1,6 +1,8 @@
 import type { UserConfig } from "@unocss/core";
 import type { HtmlEscapedString } from "@hono/hono/utils/html";
 
+export type HtmlContent = string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
+
 export interface LayoutProps {
   /**
    * Pass an optional custom UnoCSS config
@@ -13,9 +15,10 @@ export interface LayoutProps {
   /**
    * The head content
    */
-  head?: string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
+  head?: HtmlContent;
   /**
    * Provide a custom body class
    */
   bodyClass?: string;
 }
+
