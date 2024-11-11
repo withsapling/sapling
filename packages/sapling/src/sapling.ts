@@ -5,14 +5,28 @@ import type { HtmlContent, LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 
 /**
- * The Layout function
- * @param props - The layout props
- * @param children - The children
- * @returns The HTML
+ * The Layout function creates an HTML document with UnoCSS support and optional Tailwind reset styles.
+ * 
+ * @param children - The content to render in the body of the page. Can be a string, HTML escaped string,
+ *                  Promise of HTML escaped string, or template string array.
+ * 
+ * @param props - Configuration options for the layout
+ * @param props.unoConfig - Optional custom UnoCSS configuration. If not provided, uses the default UnoCSS preset
+ * @param props.disableTailwindReset - When true, removes the default Tailwind reset styles
+ * @param props.head - Additional content to inject into the document's head section
+ * @param props.bodyClass - Optional class string to add to the body element
+ * 
+ * @returns A Promise that resolves to the complete HTML document as a string
+ * 
+ * @example
+ * ```ts
+ * // Basic usage
+ * const html = await Layout(html`<h1>Hello World</h1>`);
+ * ```
  */
 export async function Layout(
-  props: LayoutProps,
-  children: HtmlContent
+  children: HtmlContent,
+  props: LayoutProps = {},
 ): Promise<string> {
   // UnoCSS config
   let config: UserConfig;
