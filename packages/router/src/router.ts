@@ -37,12 +37,12 @@ export class Router {
 			new URLPattern({ pathname: path }),
 			new URLPattern({ pathname: path.endsWith('/') ? path : path + '/' })
 		];
-		
+
 		const routes = this.routes.get(method);
 		patterns.forEach(pattern => {
 			routes?.push({ pattern, handler });
 		});
-		
+
 		return this;
 	}
 
@@ -71,7 +71,16 @@ export class Router {
 		this.notFoundHandler = handler;
 		return this;
 	}
-	
+
+	/**
+	 * Fetch handler compatible with web standards and similar to Hono's API
+	 */
+	fetch = async (req: Request): Promise<Response> => {
+		const response = await this.handle(req);
+		const notFoundResponse = await this.notFoundHandler(req, {});
+		return response ?? notFoundResponse ?? new Response("Not found", { status: 404 });
+	};
+
 	async handle(req: Request): Promise<Response | null> {
 		const method = req.method;
 		const url = req.url;
@@ -88,14 +97,14 @@ export class Router {
 				const params = Object.fromEntries(
 					Object.entries(groups).filter(([_, v]) => v !== undefined),
 				) as Record<string, string>;
-				
+
 				const response = await route.handler(req, params);
 				if (response === null) continue;
 				return response;
 			}
 		}
-		
-		return await this.notFoundHandler(req, {});
+
+		return null;
 	}
 }
 
@@ -107,7 +116,7 @@ export class PageRouter extends Router {
 
 	constructor(pagesDirectory: string | URL) {
 		super();
-		
+
 		if (pagesDirectory instanceof URL) {
 			// Convert URL to file system path
 			this.pagesPath = new URL(pagesDirectory).pathname;
@@ -129,10 +138,10 @@ export class PageRouter extends Router {
 
 				// Convert [param] to :param format BEFORE other processing
 				routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
-				
+
 				// Handle root path specially
 				if (routePath === "") routePath = "/";
-				
+
 				const module = await import(`file://${entry.path}`);
 				const handler = module.default;
 
