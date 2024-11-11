@@ -20,5 +20,9 @@ export interface LayoutProps {
    * Provide a custom body class
    */
   bodyClass?: string;
+  /**
+   * The children content to render in the body of the page
+   */
+  children: HtmlContent;
 }
 

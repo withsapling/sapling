@@ -1,41 +1,28 @@
 import { createGenerator } from "@unocss/core";
 import presetUno from "@unocss/preset-uno";
 import { html, raw } from "@hono/hono/html";
-import type { HtmlContent, LayoutProps } from "./types/index.ts";
+import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 
 /**
  * The Layout function creates an HTML document with UnoCSS support and optional Tailwind reset styles.
  * 
- * @param children - The content to render in the body of the page. Can be a string, HTML escaped string,
- *                  Promise of HTML escaped string, or template string array.
+ * @returns A Promise that resolves to the complete HTML document as a string
  * 
- * @param props - Configuration options for the layout
+ * @param props - The properties for the layout
  * @param props.unoConfig - Optional custom UnoCSS configuration. If not provided, uses the default UnoCSS preset
  * @param props.disableTailwindReset - When true, removes the default Tailwind reset styles
  * @param props.head - Additional content to inject into the document's head section
  * @param props.bodyClass - Optional class string to add to the body element
- * 
- * @returns A Promise that resolves to the complete HTML document as a string
+ * @param props.children - The content to render in the body of the page
  * 
  * @example
  * ```ts
  * // Basic usage
- * const html = await Layout(html`<h1>Hello World</h1>`);
+ * const html = await Layout({ children: html`<h1>Hello World</h1>` });
  * ```
  */
-export async function Layout(
-  // The first argument can be either props or children
-  propsOrChildren: LayoutProps | HtmlContent,
-  // The second argument can be either children or props
-  childrenOrProps: HtmlContent | LayoutProps = {},
-): Promise<string> {
-  // Runtime check to determine if the first argument is props
-  const isPropsFirst = typeof propsOrChildren === 'object' && !('strings' in propsOrChildren);
-
-  // Extract the correct values based on how the function was called
-  const children = isPropsFirst ? childrenOrProps as HtmlContent : propsOrChildren as HtmlContent;
-  const props = isPropsFirst ? propsOrChildren as LayoutProps : childrenOrProps as LayoutProps;
+export async function Layout(props: LayoutProps): Promise<string> {
 
   // UnoCSS config
   let config: UserConfig;
@@ -50,7 +37,7 @@ export async function Layout(
   // Create the UnoCSS generator
   const generator = createGenerator(config);
   // Generate the CSS from the provided children and body class
-  const css = await generator.generate(`${props.bodyClass ? `${props.bodyClass} ` : ``} ${children}`);
+  const css = await generator.generate(`${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`);
 
   // Tailwind Reset Minified
   let resetStyles =
@@ -75,7 +62,7 @@ export async function Layout(
       ${props.head}
     </head>
     ${props.bodyClass ? html`<body class="${props.bodyClass}">` : html`<body>`}
-      ${children}
+      ${props.children}
     </body>
     </html>
   `;
