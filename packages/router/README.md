@@ -1,7 +1,17 @@
 [![JSR](https://jsr.io/badges/@sapling/router)](https://jsr.io/@sapling/router)
 
-# Sapling
+# Sapling Router
 
 A micro router for Sapling sites or Deno projects.
 
-You're here really early. More to come soon.
+## Usage
+
+```ts
+import { Router } from "@sapling/router";
+
+const router = new Router();
+
+router.get("/", () => {
+  return new Response("Hello, world!");
+});
+```
