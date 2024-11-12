@@ -1,7 +1,19 @@
 [![JSR](https://jsr.io/badges/@sapling/markdown)](https://jsr.io/@sapling/markdown)
 
-# Sapling
+# Sapling Markdown Package  
 
-A micro SSR framework for Deno.
+This package contains the markdown parser and renderer that can be used in Sapling websites or other Deno projects.
 
-You're here really early. More to come soon.
+## Usage
+
+```ts
+import { renderMarkdown } from "@sapling/markdown";
+
+// Render markdown to html
+const html = await renderMarkdown(markdown);
+```
+
+## Attributions
+
+- [micromark](https://github.com/micromark/micromark) - The markdown parser
+- [shiki](https://github.com/shikijs/shiki) - The code highlighter
