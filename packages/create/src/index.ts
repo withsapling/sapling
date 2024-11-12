@@ -1,13 +1,7 @@
 import { intro, outro, text, select, isCancel } from '@clack/prompts';
 import degit from "degit";
 import { generateName } from './name-generator.ts';
-
-const basicsRepo = "https://github.com/withsapling/examples/basics";
-// const blogRepo = "https://github.com/withsapling/examples/blog";
-// const marketingSiteRepo = "https://github.com/withsapling/examples/marketing-site";
-// const portfolioRepo = "https://github.com/withsapling/examples/portfolio";
-const helloWorldRepo = "https://github.com/withsapling/examples/single-file-hello-world";
-const landingPageRepo = "https://github.com/withsapling/examples/single-file-landing-page";
+import { templates } from './templates.ts';
 
 
 // Export the init function so it can be called from other files
@@ -16,12 +10,13 @@ export async function init() {
 
   const repo = await select({
     message: "Select a project to clone:",
-    options: [
-      { label: "The Basics (recommended)", value: basicsRepo },
-      { label: "Hello World (blank)", value: helloWorldRepo },
-      { label: "Landing Page (single file)", value: landingPageRepo },
-    ],
+    options: templates.map((template) => ({
+      label: template.name,
+      value: template.repo,
+    })),
   });
+
+  const template = templates.find((template) => template.repo === repo);
 
   if (isCancel(repo)) {
     outro('Operation cancelled');
@@ -47,7 +42,7 @@ export async function init() {
 
   await emitter.clone(targetDir);
 
-  const nextSteps = `Next steps: \n\n run deno run -A --watch index.ts`;
+  const nextSteps = `Next steps:\n\n 1. cd ${targetDir}\n\n 2. ${template?.outro}`;
 
   outro(nextSteps);
 }
