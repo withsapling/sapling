@@ -1,3 +1,5 @@
 node_modules/
 .deno
 .vscode
+
+.DS_Store
