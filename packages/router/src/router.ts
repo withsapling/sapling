@@ -256,55 +256,62 @@ export class FileRouter extends Router {
 				// Empty path becomes root route
 				if (routePath === "") routePath = "/";
 
-				// Import the module from the file path
+				// Modify the import URL construction
 				const importPath = entry.path
 					.replace(this.pagesPath, "")
 					.replace(/^\//, "");
+
+				// Create a URL that works in both local and Deploy environments
 				const moduleUrl = new URL(
-					join("./pages", importPath),
+					join(this.pagesPath, importPath),
 					this.baseUrl
 				).href;
 
-				const module = await import(moduleUrl);
-				const handler = module.default;
+				try {
+					const module = await import(moduleUrl);
+					const handler = module.default;
 
-				if (typeof handler === "function") {
-					// Create a GET route for this path
-					this.get(routePath, async (req, params) => {
-						// Process route parameters
-						const processedParams: RouteParams = { ...params };
+					if (typeof handler === "function") {
+						// Create a GET route for this path
+						this.get(routePath, async (req, params) => {
+							// Process route parameters
+							const processedParams: RouteParams = { ...params };
 
-						// Handle catch-all route parameters
-						for (const [key, value] of Object.entries(params)) {
-							if (key.startsWith('*') && typeof value === 'string') {
-								// Remove the * prefix from parameter name
-								const newKey = key.slice(1);
-								// Store the full path string
-								processedParams[newKey] = value;
-								// Split the path into segments for easier consumption
-								processedParams[`${newKey}Segments`] = value.split('/').filter(Boolean);
-								// Remove the original *-prefixed parameter
-								delete processedParams[key];
+							// Handle catch-all route parameters
+							for (const [key, value] of Object.entries(params)) {
+								if (key.startsWith('*') && typeof value === 'string') {
+									// Remove the * prefix from parameter name
+									const newKey = key.slice(1);
+									// Store the full path string
+									processedParams[newKey] = value;
+									// Split the path into segments for easier consumption
+									processedParams[`${newKey}Segments`] = value.split('/').filter(Boolean);
+									// Remove the original *-prefixed parameter
+									delete processedParams[key];
+								}
 							}
-						}
 
-						// Call the route handler with the processed parameters
-						const result = await handler(req, processedParams);
+							// Call the route handler with the processed parameters
+							const result = await handler(req, processedParams);
 
-						// Handle different types of responses:
-						if (result instanceof Response) {
-							// Return Response objects as-is
-							return result;
-						}
+							// Handle different types of responses:
+							if (result instanceof Response) {
+								// Return Response objects as-is
+								return result;
+							}
 
-						if (result == null) {
-							// null/undefined results become 404s
-							return new Response("Not Found", { status: 404 });
-						}
+							if (result == null) {
+								// null/undefined results become 404s
+								return new Response("Not Found", { status: 404 });
+							}
 
-						// Convert other results (like strings) to Response objects
-						return render(String(result));
-					});
+							// Convert other results (like strings) to Response objects
+							return render(String(result));
+						});
+					}
+				} catch (error) {
+					console.error(`Failed to import ${moduleUrl}:`, error);
+					continue;
 				}
 			}
 		} catch (error) {

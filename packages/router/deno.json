@@ -2,7 +2,7 @@
   "name": "@sapling/router",
   "description": "A micro router for Deno",
   "license": "MIT",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "imports": {
     "@std/fs": "jsr:@std/fs@^1.0.5",
     "@std/media-types": "jsr:@std/media-types@^1.0.3",
