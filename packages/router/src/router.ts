@@ -232,9 +232,8 @@ export class FileRouter extends Router {
 					.replace(this.pagesPath, "")
 					.replace(/\.[^/.]+$/, "");
 
-				// Import the module at startup
-				const moduleUrl = new URL(entry.path, 'file://').href;
-				const module = await import(moduleUrl);
+				// Import the module using the full file path
+				const module = await import(entry.path);
 				if (typeof module.default === 'function') {
 					this.routeModules[relativePath] = module.default;
 				}
