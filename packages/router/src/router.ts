@@ -221,7 +221,7 @@ export class FileRouter extends Router {
 	}
 
 	async initialize(): Promise<void> {
-		console.warn("%cThe Sapling FileRouter is experimental. It does not currently work in Deno Deploy.", "color: orange;");
+		console.warn("%cThe Sapling FileRouter is experimental. It does not currently work in Deno Deploy.\n\nRead more: https://docs.deno.com/deploy/api/dynamic-import\n", "color: orange;");
 
 		try {
 			// First pass: Load all modules at startup
