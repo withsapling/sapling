@@ -1,8 +1,12 @@
 import { walk } from "@std/fs";
+import { render } from "./render.ts";
+import { dirname, fromFileUrl, join } from "@std/path";
+
+type RouteParams = Record<string, string | string[]>;
 
 type RouteHandler = (
 	req: Request,
-	params: Record<string, string>,
+	params: RouteParams,
 ) => Response | Promise<Response | null> | null;
 
 type Route = {
@@ -110,54 +114,144 @@ export class Router {
 
 /**
  * An extension of the Router class for file-based routing
+ * 
+ * @example
+ * // main.ts
+ * const router = new FileRouter({
+ *   directory: "./pages",
+ *   baseUrl: import.meta.url,
+ * });
+ * await router.initialize();
+ * 
+ * // pages/blog/[slug].ts
+ * export default async function BlogPost(req: Request, params: { slug: string }) {
+ *   return `Blog post: ${params.slug}`;
+ *   // or return a Response object
+ *   // or return html`<h1>Blog post: ${params.slug}</h1>`;
+ * }
+ * 
+ * // Supported file patterns:
+ * // pages/index.ts -> "/"
+ * // pages/about.ts -> "/about"
+ * // pages/blog/index.ts -> "/blog"
+ * // pages/blog/[slug].ts -> "/blog/:slug"
+ * // pages/[category]/[id].ts -> "/:category/:id"
+ * // pages/blog/[...slug].ts -> "/blog/*slug"
  */
-export class PageRouter extends Router {
+/**
+ * An extension of the Router class for file-based routing.
+ * Automatically creates routes based on the file structure in a directory.
+ * 
+ * @example
+ * // main.ts
+ * const router = new FileRouter({
+ *   directory: "./pages",
+ *   baseUrl: import.meta.url,
+ * });
+ * await router.initialize();
+ * 
+ * // Supported file patterns:
+ * // pages/index.ts -> "/"
+ * // pages/about.ts -> "/about"
+ * // pages/blog/index.ts -> "/blog"
+ * // pages/blog/[slug].ts -> "/blog/:slug"
+ * // pages/[category]/[id].ts -> "/:category/:id"
+ * // pages/docs/[...slug].ts -> "/docs/*slug" (catch-all route)
+ */
+export class FileRouter extends Router {
+	/** Absolute path to the pages directory */
 	private pagesPath: string;
 
-	constructor(pagesDirectory: string | URL) {
+	/**
+	 * Creates a new FileRouter instance
+	 * @param options.directory - Relative path to the pages directory
+	 * @param options.baseUrl - import.meta.url from the calling file
+	 */
+	constructor(options: {
+		directory: string;
+		baseUrl: string;
+	}) {
 		super();
-
-		if (pagesDirectory instanceof URL) {
-			// Convert URL to file system path
-			this.pagesPath = new URL(pagesDirectory).pathname;
-		} else {
-			this.pagesPath = pagesDirectory;
-		}
+		// Convert the relative directory path to an absolute path
+		const baseDir = dirname(fromFileUrl(options.baseUrl));
+		this.pagesPath = join(baseDir, options.directory);
 	}
 
+	/**
+	 * Scans the pages directory and creates routes based on the file structure.
+	 * Should be called after creating the router instance.
+	 */
 	async initialize(): Promise<void> {
 		try {
+			// Walk through all TypeScript/JavaScript files in the pages directory
 			for await (const entry of walk(this.pagesPath, {
 				includeDirs: false,
 				exts: [".ts", ".tsx", ".js", ".jsx"],
 			})) {
+				// Convert file path to route path
 				let routePath = entry.path
+					// Remove the base pages directory path
 					.replace(this.pagesPath, "")
-					.replace(/\.[^/.]+$/, "") // Remove file extension
-					.replace(/\/index$/, ""); // Remove index
+					// Remove file extension
+					.replace(/\.[^/.]+$/, "")
+					// Remove "index" from path (index.ts -> /)
+					.replace(/\/index$/, "");
 
-				// Convert [param] to :param format BEFORE other processing
+				// Convert file-based route patterns to URLPattern syntax:
+				// [...param] -> *param (catch-all routes)
+				routePath = routePath.replace(/\[\.{3}([^\]]+)\]/g, "*$1");
+				// [param] -> :param (dynamic routes)
 				routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
 
-				// Handle root path specially
+				// Empty path becomes root route
 				if (routePath === "") routePath = "/";
 
+				// Import the route handler from the file
 				const module = await import(`file://${entry.path}`);
 				const handler = module.default;
 
 				if (typeof handler === "function") {
-					// Register both versions for dynamic routes too
-					this.get(routePath, handler);
-					if (!routePath.endsWith("/")) {
-						this.get(routePath + "/", handler);
-					}
+					// Create a GET route for this path
+					this.get(routePath, async (req, params) => {
+						// Process route parameters
+						const processedParams: RouteParams = { ...params };
 
-					// For debugging
-					// console.log("Registered routes:", routePath, routePath + "/");
+						// Handle catch-all route parameters
+						for (const [key, value] of Object.entries(params)) {
+							if (key.startsWith('*') && typeof value === 'string') {
+								// Remove the * prefix from parameter name
+								const newKey = key.slice(1);
+								// Store the full path string
+								processedParams[newKey] = value;
+								// Split the path into segments for easier consumption
+								processedParams[`${newKey}Segments`] = value.split('/').filter(Boolean);
+								// Remove the original *-prefixed parameter
+								delete processedParams[key];
+							}
+						}
+
+						// Call the route handler with the processed parameters
+						const result = await handler(req, processedParams);
+
+						// Handle different types of responses:
+						if (result instanceof Response) {
+							// Return Response objects as-is
+							return result;
+						}
+
+						if (result == null) {
+							// null/undefined results become 404s
+							return new Response("Not Found", { status: 404 });
+						}
+
+						// Convert other results (like strings) to Response objects
+						return render(String(result));
+					});
 				}
 			}
 		} catch (error) {
 			console.error("Error during initialization:", error);
+			throw error;
 		}
 	}
 }
