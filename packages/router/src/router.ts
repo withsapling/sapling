@@ -209,6 +209,7 @@ export class Router {
 export class FileRouter extends Router {
 	/** Absolute path to the pages directory */
 	private pagesPath: string;
+	private baseUrl: string;
 
 	/**
 	 * Creates a new FileRouter instance
@@ -220,6 +221,7 @@ export class FileRouter extends Router {
 		baseUrl: string;
 	}) {
 		super();
+		this.baseUrl = options.baseUrl;
 		// Convert the relative directory path to an absolute path
 		const baseDir = dirname(fromFileUrl(options.baseUrl));
 		this.pagesPath = join(baseDir, options.directory);
@@ -254,8 +256,16 @@ export class FileRouter extends Router {
 				// Empty path becomes root route
 				if (routePath === "") routePath = "/";
 
-				// Import the route handler from the file
-				const module = await import(new URL(`file://${entry.path}`).href);
+				// Import the module from the file path
+				const importPath = entry.path
+					.replace(this.pagesPath, "")
+					.replace(/^\//, "");
+				const moduleUrl = new URL(
+					join("./pages", importPath),
+					this.baseUrl
+				).href;
+
+				const module = await import(moduleUrl);
 				const handler = module.default;
 
 				if (typeof handler === "function") {
