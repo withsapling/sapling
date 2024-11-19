@@ -6,7 +6,18 @@ const router = new FileRouter({
   baseUrl: import.meta.url,
 });
 
+// This sets up the file based routes
 await router.initialize();
+
+/**
+ * This is a simple api route that returns the request body as a json response
+ * Because we're using the same router base class for both the file based routes and the api routes
+ * we can define the api routes after the file based routes have been initialized
+ */
+router.post("/api/joke", async (req) => {
+  const request = await req.json();
+  return new Response(JSON.stringify(request));
+});
 
 // Serve static files
 // The location of this is important. It should be the last route you define before the 404 handler.
