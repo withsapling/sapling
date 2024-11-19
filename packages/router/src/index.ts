@@ -1,5 +1,5 @@
-import { Router, PageRouter } from "./router.ts";
+import { Router, FileRouter } from "./router.ts";
 import { serveStatic } from "./serve-static.ts";
 import { render } from "./render.ts";
 
-export { Router, PageRouter, serveStatic, render };
+export { Router, FileRouter, serveStatic, render };
