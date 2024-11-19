@@ -15,6 +15,54 @@ type Route = {
 };
 
 /**
+ *  A Performance improvement to think about	 
+ * */
+// type Route = {
+// 	pattern: URLPattern;
+// 	handler: RouteHandler;
+// 	// Add a score for route specificity
+// 	specificity: number;
+// };
+
+// export class Router {
+// 	// ... existing code ...
+
+// 	private calculateSpecificity(path: string): number {
+// 			// Higher numbers = more specific routes
+// 			let score = 0;
+// 			const segments = path.split('/').filter(Boolean);
+
+// 			for (const segment of segments) {
+// 					if (segment.startsWith('*')) score += 1;      // Catch-all params
+// 					else if (segment.startsWith(':')) score += 2; // Dynamic params
+// 					else score += 3;                              // Static segments
+// 			}
+// 			return score;
+// 	}
+
+// 	private add(method: string, path: string, handler: RouteHandler): Router {
+// 			const patterns = [
+// 					new URLPattern({ pathname: path }),
+// 					new URLPattern({ pathname: path.endsWith('/') ? path : path + '/' })
+// 			];
+
+// 			const routes = this.routes.get(method);
+// 			patterns.forEach(pattern => {
+// 					routes?.push({ 
+// 							pattern, 
+// 							handler,
+// 							specificity: this.calculateSpecificity(path)
+// 					});
+// 			});
+
+// 			// Sort routes by specificity (most specific first)
+// 			routes?.sort((a, b) => b.specificity - a.specificity);
+
+// 			return this;
+// 	}
+// }
+
+/**
  * A simple router for Deno. For advanced routing, use a framework like Hono.
  * 
  * @example
