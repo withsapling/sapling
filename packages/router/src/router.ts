@@ -207,112 +207,88 @@ export class Router {
  * // pages/docs/[...slug].ts -> "/docs/*slug" (catch-all route)
  */
 export class FileRouter extends Router {
-	/** Absolute path to the pages directory */
+	private routeModules: Record<string, RouteHandler> = {};
 	private pagesPath: string;
-	private baseUrl: string;
 
-	/**
-	 * Creates a new FileRouter instance
-	 * @param options.directory - Relative path to the pages directory
-	 * @param options.baseUrl - import.meta.url from the calling file
-	 */
 	constructor(options: {
 		directory: string;
 		baseUrl: string;
 	}) {
 		super();
-		this.baseUrl = options.baseUrl;
-		// Convert the relative directory path to an absolute path
+		// Keep the path resolution logic for local development compatibility
 		const baseDir = dirname(fromFileUrl(options.baseUrl));
 		this.pagesPath = join(baseDir, options.directory);
 	}
 
-	/**
-	 * Scans the pages directory and creates routes based on the file structure.
-	 * Should be called after creating the router instance.
-	 */
 	async initialize(): Promise<void> {
 		try {
-			// Walk through all TypeScript/JavaScript files in the pages directory
+			// First pass: Load all modules at startup
 			for await (const entry of walk(this.pagesPath, {
 				includeDirs: false,
 				exts: [".ts", ".tsx", ".js", ".jsx"],
 			})) {
-				// Convert file path to route path
-				let routePath = entry.path
-					// Remove the base pages directory path
+				// Get the relative path for the route
+				const relativePath = entry.path
 					.replace(this.pagesPath, "")
-					// Remove file extension
-					.replace(/\.[^/.]+$/, "")
-					// Remove "index" from path (index.ts -> /)
-					.replace(/\/index$/, "");
+					.replace(/\.[^/.]+$/, "");
 
-				// Convert file-based route patterns to URLPattern syntax:
-				// [...param] -> *param (catch-all routes)
-				routePath = routePath.replace(/\[\.{3}([^\]]+)\]/g, "*$1");
-				// [param] -> :param (dynamic routes)
-				routePath = routePath.replace(/\[([^\]]+)\]/g, ":$1");
+				// Import the module at startup
+				const moduleUrl = new URL(entry.path, 'file://').href;
+				const module = await import(moduleUrl);
+				if (typeof module.default === 'function') {
+					this.routeModules[relativePath] = module.default;
+				}
+			}
+
+			// Second pass: Register all routes
+			for (const [path, handler] of Object.entries(this.routeModules)) {
+				let routePath = path
+					// Remove "index" from path (index.ts -> /)
+					.replace(/\/index$/, "")
+					// Convert file-based route patterns to URLPattern syntax:
+					// [...param] -> *param (catch-all routes)
+					.replace(/\[\.{3}([^\]]+)\]/g, "*$1")
+					// [param] -> :param (dynamic routes)
+					.replace(/\[([^\]]+)\]/g, ":$1");
 
 				// Empty path becomes root route
 				if (routePath === "") routePath = "/";
 
-				// Modify the import URL construction
-				const importPath = entry.path
-					.replace(this.pagesPath, "")
-					.replace(/^\//, "");
+				this.get(routePath, async (req, params) => {
+					// Process route parameters
+					const processedParams: RouteParams = { ...params };
 
-				// Create a URL that works in both local and Deploy environments
-				const moduleUrl = new URL(
-					join(this.pagesPath, importPath),
-					this.baseUrl
-				).href;
-
-				try {
-					const module = await import(moduleUrl);
-					const handler = module.default;
-
-					if (typeof handler === "function") {
-						// Create a GET route for this path
-						this.get(routePath, async (req, params) => {
-							// Process route parameters
-							const processedParams: RouteParams = { ...params };
-
-							// Handle catch-all route parameters
-							for (const [key, value] of Object.entries(params)) {
-								if (key.startsWith('*') && typeof value === 'string') {
-									// Remove the * prefix from parameter name
-									const newKey = key.slice(1);
-									// Store the full path string
-									processedParams[newKey] = value;
-									// Split the path into segments for easier consumption
-									processedParams[`${newKey}Segments`] = value.split('/').filter(Boolean);
-									// Remove the original *-prefixed parameter
-									delete processedParams[key];
-								}
-							}
-
-							// Call the route handler with the processed parameters
-							const result = await handler(req, processedParams);
-
-							// Handle different types of responses:
-							if (result instanceof Response) {
-								// Return Response objects as-is
-								return result;
-							}
-
-							if (result == null) {
-								// null/undefined results become 404s
-								return new Response("Not Found", { status: 404 });
-							}
-
-							// Convert other results (like strings) to Response objects
-							return render(String(result));
-						});
+					// Handle catch-all route parameters
+					for (const [key, value] of Object.entries(params)) {
+						if (key.startsWith('*') && typeof value === 'string') {
+							// Remove the * prefix from parameter name
+							const newKey = key.slice(1);
+							// Store the full path string
+							processedParams[newKey] = value;
+							// Split the path into segments for easier consumption
+							processedParams[`${newKey}Segments`] = value.split('/').filter(Boolean);
+							// Remove the original *-prefixed parameter
+							delete processedParams[key];
+						}
 					}
-				} catch (error) {
-					console.error(`Failed to import ${moduleUrl}:`, error);
-					continue;
-				}
+
+					// Call the route handler with the processed parameters
+					const result = await handler(req, processedParams);
+
+					// Handle different types of responses:
+					if (result instanceof Response) {
+						// Return Response objects as-is
+						return result;
+					}
+
+					if (result == null) {
+						// null/undefined results become 404s
+						return new Response("Not Found", { status: 404 });
+					}
+
+					// Convert other results (like strings) to Response objects
+					return render(String(result));
+				});
 			}
 		} catch (error) {
 			console.error("Error during initialization:", error);
