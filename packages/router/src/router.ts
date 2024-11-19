@@ -207,7 +207,7 @@ export class FileRouter extends Router {
 				if (routePath === "") routePath = "/";
 
 				// Import the route handler from the file
-				const module = await import(`file://${entry.path}`);
+				const module = await import(new URL(`file://${entry.path}`).href);
 				const handler = module.default;
 
 				if (typeof handler === "function") {
