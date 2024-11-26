@@ -1,7 +1,7 @@
-import { HtmlContent, Layout as SaplingLayout, type LayoutProps as SaplingLayoutProps, html } from "./index.ts";
-import { defineConfig } from "npm:unocss";
-import presetUno from "npm:@unocss/preset-uno";
-import presetTypography from "npm:@unocss/preset-typography";
+import { type HtmlContent, Layout as SaplingLayout, type LayoutProps as SaplingLayoutProps, html } from "./index.ts";
+import { defineConfig } from "unocss";
+import presetUno from "@unocss/preset-uno";
+import presetTypography from "@unocss/preset-typography";
 
 const config = defineConfig({
   presets: [presetUno(), presetTypography()],
