@@ -11,7 +11,7 @@ import { Router } from "@sapling/router";
 
 const router = new Router();
 
-router.get("/", () => {
-  return new Response("Hello, world!");
+router.get("/", (c: Context) => {
+  return c.json({ message: "Hello, world!" });
 });
 ```

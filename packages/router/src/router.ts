@@ -19,6 +19,13 @@ import { dirname, fromFileUrl, join } from "@std/path";
  *   c.state.user = await getUser(userId);
  * });
  * ```
+ * 
+ * @example
+ * ```ts
+ * router.get("/", (c) => {
+ *   return c.json({ message: "Hello, world!" });
+ * });
+ * ```
  */
 export interface Context {
 	/** The original request object */
