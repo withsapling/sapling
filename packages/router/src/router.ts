@@ -22,9 +22,12 @@ import { dirname, fromFileUrl, join } from "@std/path";
  */
 export interface Context {
 	/** The original request object */
-	req: Request;
-	/** URL parameters extracted from the route pattern */
-	params: Record<string, string | string[]>;
+	req: {
+		param: (name: string) => string;
+		method: string;
+		url: string;
+		headers: Headers;
+	};
 	/** Shared state object for passing data between middleware */
 	state: Record<string, unknown>;
 
@@ -266,10 +269,15 @@ export class Router {
 	 * @param req - Request object
 	 * @param params - URL parameters
 	 */
-	private createContext(req: Request, params: Record<string, string | string[]>): Context {
+	private createContext(req: Request, params: Record<string, string>): Context {
 		return {
-			req,
-			params,
+			req: {
+				param: (name: string) => params[name] || '',
+				method: req.method,
+				url: req.url,
+				headers: req.headers,
+				// Add other request methods as needed
+			},
 			state: {},
 			query: () => new URL(req.url).searchParams,
 			jsonData: async <T>() => await req.clone().json() as T,
@@ -397,19 +405,18 @@ export class FileRouter extends Router {
 				if (routePath === "") routePath = "/";
 
 				this.get(routePath, async (c) => {
-					const processedParams: Record<string, string | string[]> = { ...c.params };
+					// Store the original param function
+					const originalParam = c.req.param;
 
-					// Handle catch-all parameters
-					for (const [key, value] of Object.entries(c.params)) {
-						if (key.startsWith('*') && typeof value === 'string') {
-							const newKey = key.slice(1);
-							processedParams[newKey] = value;
-							processedParams[`${newKey}Segments`] = value.split('/').filter(Boolean);
-							delete processedParams[key];
+					// Create a new param function that handles catch-all routes
+					c.req.param = (name: string) => {
+						if (name.startsWith('*')) {
+							const newName = name.slice(1);
+							return originalParam(newName);
 						}
-					}
+						return originalParam(name);
+					};
 
-					c.params = processedParams;
 					const result = await handler(c);
 
 					if (result instanceof Response) {
