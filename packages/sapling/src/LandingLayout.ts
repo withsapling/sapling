@@ -1,4 +1,4 @@
-import { Layout as SaplingLayout, type LayoutProps as SaplingLayoutProps, html } from "./index.ts";
+import { HtmlContent, Layout as SaplingLayout, type LayoutProps as SaplingLayoutProps, html } from "./index.ts";
 import { defineConfig } from "npm:unocss";
 import presetUno from "npm:@unocss/preset-uno";
 import presetTypography from "npm:@unocss/preset-typography";
@@ -63,7 +63,7 @@ export interface LayoutProps extends SaplingLayoutProps {
   };
 }
 
-export default async function Layout(props: LayoutProps) {
+export default async function Layout(props: LayoutProps): Promise<HtmlContent> {
   return await SaplingLayout({
     unoConfig: config,
     head: html`
