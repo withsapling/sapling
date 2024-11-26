@@ -1,90 +1,149 @@
 import { walk } from "@std/fs";
-import { render } from "./render.ts";
 import { dirname, fromFileUrl, join } from "@std/path";
 
-type RouteParams = Record<string, string | string[]>;
+/**
+ * Context object passed to route handlers
+ * @example
+ * ```ts
+ * router.get("/users/:id", async (c: Context) => {
+ *   // Access URL parameters
+ *   const userId = c.params.id;
+ *   
+ *   // Access query parameters
+ *   const sort = c.query().get("sort");
+ *   
+ *   // Parse JSON body
+ *   const body = await c.json<{ name: string }>();
+ *   
+ *   // Use shared state
+ *   c.state.user = await getUser(userId);
+ * });
+ * ```
+ */
+export interface Context {
+	/** The original request object */
+	req: Request;
+	/** URL parameters extracted from the route pattern */
+	params: Record<string, string | string[]>;
+	/** Shared state object for passing data between middleware */
+	state: Record<string, unknown>;
 
-type RouteHandler = (
-	req: Request,
-	params: RouteParams,
-) => Response | Promise<Response | null> | null;
+	/**
+	 * Get URL query parameters
+	 * @returns URLSearchParams object containing query parameters
+	 */
+	query(): URLSearchParams;
 
+	/**
+	 * Parse request body as JSON
+	 * @template T - The expected type of the JSON data
+	 * @returns Promise resolving to the parsed JSON data
+	 * @example
+	 * ```ts
+	 * router.post("/api/users", async (c) => {
+	 *   const data = await c.jsonData<{ name: string }>();
+	 *   return c.json({ created: data.name });
+	 * });
+	 * ```
+	 */
+	jsonData<T>(): Promise<T>;
+
+	/**
+	 * Send JSON response
+	 * @example
+	 * ```ts
+	 * router.get("/api/user", (c) => {
+	 *   return c.json({ name: "John", age: 30 });
+	 * });
+	 * ```
+	 */
+	json(data: unknown): Response;
+
+	/**
+	 * Get form data from request
+	 * @returns Promise resolving to FormData object
+	 */
+	formData(): Promise<FormData>;
+
+	/**
+	 * Render HTML response
+	 * @example
+	 * ```ts
+	 * router.get("/", (c) => {
+	 *   return c.html("<h1>Hello World</h1>");
+	 * });
+	 * ```
+	 */
+	html(content: string): Response;
+
+	/**
+	 * Send text response
+	 * @example
+	 * ```ts
+	 * router.get("/text", (c) => {
+	 *   return c.text("Hello World");
+	 * });
+	 * ```
+	 */
+	text(content: string): Response;
+}
+
+/** Handler function type for processing requests */
+type ContextHandler = (c: Context) => Response | Promise<Response | null> | null;
+
+/** Internal route configuration */
 type Route = {
 	pattern: URLPattern;
-	handler: RouteHandler;
+	handler: ContextHandler;
 };
 
 /**
- *  A Performance improvement to think about	 
- * */
-// type Route = {
-// 	pattern: URLPattern;
-// 	handler: RouteHandler;
-// 	// Add a score for route specificity
-// 	specificity: number;
-// };
-
-// export class Router {
-// 	// ... existing code ...
-
-// 	private calculateSpecificity(path: string): number {
-// 			// Higher numbers = more specific routes
-// 			let score = 0;
-// 			const segments = path.split('/').filter(Boolean);
-
-// 			for (const segment of segments) {
-// 					if (segment.startsWith('*')) score += 1;      // Catch-all params
-// 					else if (segment.startsWith(':')) score += 2; // Dynamic params
-// 					else score += 3;                              // Static segments
-// 			}
-// 			return score;
-// 	}
-
-// 	private add(method: string, path: string, handler: RouteHandler): Router {
-// 			const patterns = [
-// 					new URLPattern({ pathname: path }),
-// 					new URLPattern({ pathname: path.endsWith('/') ? path : path + '/' })
-// 			];
-
-// 			const routes = this.routes.get(method);
-// 			patterns.forEach(pattern => {
-// 					routes?.push({ 
-// 							pattern, 
-// 							handler,
-// 							specificity: this.calculateSpecificity(path)
-// 					});
-// 			});
-
-// 			// Sort routes by specificity (most specific first)
-// 			routes?.sort((a, b) => b.specificity - a.specificity);
-
-// 			return this;
-// 	}
-// }
-
-/**
- * A simple router for Deno. For advanced routing, use a framework like Hono.
- * 
+ * Router class for handling HTTP requests
  * @example
+ * ```ts
  * const router = new Router();
- * router.get("/", () => new Response("Hello, world!"));
- * router.get("/user/:id", (req, params) => new Response(`User ${params.id}`));
+ * 
+ * // Basic route
+ * router.get("/", (c) => {
+ *   return new Response("Hello World!");
+ * });
+ * 
+ * // Route with parameters
+ * router.get("/users/:id", (c) => {
+ *   const userId = c.params.id;
+ *   return new Response(`User ${userId}`);
+ * });
+ * 
+ * // Handle POST with JSON body
+ * router.post("/api/users", async (c) => {
+ *   const data = await c.json<{ name: string }>();
+ *   return new Response(`Created user: ${data.name}`);
+ * });
+ * 
+ * // Custom 404 handler
+ * router.setNotFoundHandler((c) => {
+ *   return new Response("Custom Not Found", { status: 404 });
+ * });
+ * ```
  */
 export class Router {
 	private routes: Map<string, Route[]> = new Map();
-
-	private notFoundHandler: RouteHandler = () =>
+	private notFoundHandler: ContextHandler = () =>
 		new Response("Not found", { status: 404 });
 
 	constructor() {
-		// Initialize maps for different HTTP methods
 		["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
 			this.routes.set(method, []);
 		});
 	}
 
-	private add(method: string, path: string, handler: RouteHandler): Router {
-		// Create patterns for both with and without trailing slash
+	/**
+	 * Add a route handler for a specific HTTP method and path
+	 * @param method - HTTP method
+	 * @param path - URL pattern to match
+	 * @param handler - Function to handle matching requests
+	 */
+	private add(method: string, path: string, handler: ContextHandler): Router {
 		const patterns = [
 			new URLPattern({ pathname: path }),
 			new URLPattern({ pathname: path.endsWith('/') ? path : path + '/' })
@@ -98,41 +157,139 @@ export class Router {
 		return this;
 	}
 
-	get(path: string, handler: RouteHandler): Router {
+	/**
+	 * Add a GET route handler
+	 * @example
+	 * ```ts
+	 * // Basic route
+	 * router.get("/hello", (c) => {
+	 *   return new Response("Hello World!");
+	 * });
+	 * 
+	 * // Route with URL parameters
+	 * router.get("/users/:id/posts/:postId", (c) => {
+	 *   const { id, postId } = c.params;
+	 *   return new Response(`User ${id}, Post ${postId}`);
+	 * });
+	 * 
+	 * // Using query parameters
+	 * router.get("/search", (c) => {
+	 *   const query = c.query().get("q");
+	 *   return new Response(`Search: ${query}`);
+	 * });
+	 * ```
+	 */
+	get(path: string, handler: ContextHandler): Router {
 		return this.add("GET", path, handler);
 	}
 
-	post(path: string, handler: RouteHandler): Router {
+	/**
+	 * Add a POST route handler
+	 * @example
+	 * ```ts
+	 * // Handle JSON body
+	 * router.post("/api/users", async (c) => {
+	 *   const user = await c.json<{ name: string; email: string }>();
+	 *   return new Response(`Created user: ${user.name}`);
+	 * });
+	 * 
+	 * // Handle form data
+	 * router.post("/upload", async (c) => {
+	 *   const form = await c.formData();
+	 *   const file = form.get("file");
+	 *   return new Response(`Uploaded: ${file.name}`);
+	 * });
+	 * ```
+	 */
+	post(path: string, handler: ContextHandler): Router {
 		return this.add("POST", path, handler);
 	}
 
-	put(path: string, handler: RouteHandler): Router {
+	/**
+	 * Add a PUT route handler
+	 * @param path - URL pattern to match
+	 * @param handler - Function to handle matching requests
+	 */
+	put(path: string, handler: ContextHandler): Router {
 		return this.add("PUT", path, handler);
 	}
 
-	delete(path: string, handler: RouteHandler): Router {
+	/**
+	 * Add a DELETE route handler
+	 * @param path - URL pattern to match
+	 * @param handler - Function to handle matching requests
+	 */
+	delete(path: string, handler: ContextHandler): Router {
 		return this.add("DELETE", path, handler);
 	}
 
-	patch(path: string, handler: RouteHandler): Router {
+	/**
+	 * Add a PATCH route handler
+	 * @param path - URL pattern to match
+	 * @param handler - Function to handle matching requests
+	 */
+	patch(path: string, handler: ContextHandler): Router {
 		return this.add("PATCH", path, handler);
 	}
 
-	// Add a new method to set custom 404 handler
-	setNotFoundHandler(handler: RouteHandler): Router {
+	/**
+	 * Set custom handler for 404 Not Found responses
+	 * @example
+	 * ```ts
+	 * router.setNotFoundHandler((c) => {
+	 *   // Return custom 404 page
+	 *   return new Response("Custom Not Found Page", {
+	 *     status: 404,
+	 *     headers: { "Content-Type": "text/html" }
+	 *   });
+	 * });
+	 * ```
+	 */
+	setNotFoundHandler(handler: ContextHandler): Router {
 		this.notFoundHandler = handler;
 		return this;
 	}
 
 	/**
-	 * Fetch handler compatible with web standards and similar to Hono's API
+	 * Handle incoming fetch requests
+	 * @param req - Request object
 	 */
 	fetch = async (req: Request): Promise<Response> => {
 		const response = await this.handle(req);
-		const notFoundResponse = await this.notFoundHandler(req, {});
+		const context = this.createContext(req, {});
+		const notFoundResponse = await this.notFoundHandler(context);
 		return response ?? notFoundResponse ?? new Response("Not found", { status: 404 });
 	};
 
+	/**
+	 * Create a new context object for a request
+	 * @param req - Request object
+	 * @param params - URL parameters
+	 */
+	private createContext(req: Request, params: Record<string, string | string[]>): Context {
+		return {
+			req,
+			params,
+			state: {},
+			query: () => new URL(req.url).searchParams,
+			jsonData: async <T>() => await req.clone().json() as T,
+			formData: async () => await req.clone().formData(),
+			html: (content: string) => new Response(content, {
+				headers: { "content-type": "text/html; charset=UTF-8" }
+			}),
+			json: (data: unknown) => new Response(JSON.stringify(data), {
+				headers: { "content-type": "application/json" }
+			}),
+			text: (content: string) => new Response(content, {
+				headers: { "content-type": "text/plain; charset=UTF-8" }
+			})
+		};
+	}
+
+	/**
+	 * Handle a request and find matching route
+	 * @param req - Request object
+	 */
 	async handle(req: Request): Promise<Response | null> {
 		const method = req.method;
 		const url = req.url;
@@ -150,7 +307,8 @@ export class Router {
 					Object.entries(groups).filter(([_, v]) => v !== undefined),
 				) as Record<string, string>;
 
-				const response = await route.handler(req, params);
+				const context = this.createContext(req, params);
+				const response = await route.handler(context);
 				if (response === null) continue;
 				return response;
 			}
@@ -161,134 +319,108 @@ export class Router {
 }
 
 /**
- * An extension of the Router class for file-based routing
- * 
+ * File-based router that automatically creates routes from file structure
  * @example
- * // main.ts
+ * ```ts
+ * // Initialize file router
  * const router = new FileRouter({
- *   directory: "./pages",
- *   baseUrl: import.meta.url,
+ *   directory: "./routes",
+ *   baseUrl: import.meta.url
  * });
+ * 
+ * // File structure:
+ * // routes/
+ * //   ├─ index.ts         -> "/"
+ * //   ├─ about.ts        -> "/about"
+ * //   ├─ users/
+ * //   │  ├─ index.ts     -> "/users"
+ * //   │  ├─ [id].ts      -> "/users/:id"
+ * //   │  └─ [...slug].ts -> "/users/*"
+ * 
  * await router.initialize();
  * 
- * // pages/blog/[slug].ts
- * export default async function BlogPost(req: Request, params: { slug: string }) {
- *   return `Blog post: ${params.slug}`;
- *   // or return a Response object
- *   // or return html`<h1>Blog post: ${params.slug}</h1>`;
+ * // Example route file (routes/users/[id].ts):
+ * export default function(c: Context) {
+ *   const userId = c.params.id;
+ *   return new Response(`User ${userId}`);
  * }
- * 
- * // Supported file patterns:
- * // pages/index.ts -> "/"
- * // pages/about.ts -> "/about"
- * // pages/blog/index.ts -> "/blog"
- * // pages/blog/[slug].ts -> "/blog/:slug"
- * // pages/[category]/[id].ts -> "/:category/:id"
- * // pages/blog/[...slug].ts -> "/blog/*slug"
- */
-/**
- * An extension of the Router class for file-based routing.
- * Automatically creates routes based on the file structure in a directory.
- * 
- * @example
- * // main.ts
- * const router = new FileRouter({
- *   directory: "./pages",
- *   baseUrl: import.meta.url,
- * });
- * await router.initialize();
- * 
- * // Supported file patterns:
- * // pages/index.ts -> "/"
- * // pages/about.ts -> "/about"
- * // pages/blog/index.ts -> "/blog"
- * // pages/blog/[slug].ts -> "/blog/:slug"
- * // pages/[category]/[id].ts -> "/:category/:id"
- * // pages/docs/[...slug].ts -> "/docs/*slug" (catch-all route)
+ * ```
  */
 export class FileRouter extends Router {
-	private routeModules: Record<string, RouteHandler> = {};
+	private routeModules: Record<string, ContextHandler> = {};
 	private pagesPath: string;
 
+	/**
+	 * Create a new FileRouter
+	 * @param options - Configuration options
+	 * @param options.directory - Directory containing route files
+	 * @param options.baseUrl - Base URL for import.meta.url
+	 */
 	constructor(options: {
 		directory: string;
 		baseUrl: string;
 	}) {
 		super();
-		// Keep the path resolution logic for local development compatibility
 		const baseDir = dirname(fromFileUrl(options.baseUrl));
 		this.pagesPath = join(baseDir, options.directory);
 	}
 
+	/**
+	 * Initialize the router by scanning for and loading route files
+	 */
 	async initialize(): Promise<void> {
-		console.warn("%cWARNING%c: The Sapling FileRouter is experimental. It does not currently work in Deno Deploy due to dynamic import limitations.\nFeel free to play around with it, but be aware of the limitations.\n", "color: orange; font-weight: bold;", "");
+		console.warn("%cWARNING%c: The Sapling FileRouter is experimental. It does not currently work in Deno Deploy due to dynamic import limitations.\n", "color: orange; font-weight: bold;", "");
 
 		try {
-			// First pass: Load all modules at startup
+			// First pass: Load all modules
 			for await (const entry of walk(this.pagesPath, {
 				includeDirs: false,
 				exts: [".ts", ".tsx", ".js", ".jsx"],
 			})) {
-				// Get the relative path for the route
 				const relativePath = entry.path
 					.replace(this.pagesPath, "")
 					.replace(/\.[^/.]+$/, "");
 
-				// Import the module using the full file path
 				const module = await import(entry.path);
 				if (typeof module.default === 'function') {
 					this.routeModules[relativePath] = module.default;
 				}
 			}
 
-			// Second pass: Register all routes
+			// Second pass: Register routes
 			for (const [path, handler] of Object.entries(this.routeModules)) {
 				let routePath = path
-					// Remove "index" from path (index.ts -> /)
 					.replace(/\/index$/, "")
-					// Convert file-based route patterns to URLPattern syntax:
-					// [...param] -> *param (catch-all routes)
 					.replace(/\[\.{3}([^\]]+)\]/g, "*$1")
-					// [param] -> :param (dynamic routes)
 					.replace(/\[([^\]]+)\]/g, ":$1");
 
-				// Empty path becomes root route
 				if (routePath === "") routePath = "/";
 
-				this.get(routePath, async (req, params) => {
-					// Process route parameters
-					const processedParams: RouteParams = { ...params };
+				this.get(routePath, async (c) => {
+					const processedParams: Record<string, string | string[]> = { ...c.params };
 
-					// Handle catch-all route parameters
-					for (const [key, value] of Object.entries(params)) {
+					// Handle catch-all parameters
+					for (const [key, value] of Object.entries(c.params)) {
 						if (key.startsWith('*') && typeof value === 'string') {
-							// Remove the * prefix from parameter name
 							const newKey = key.slice(1);
-							// Store the full path string
 							processedParams[newKey] = value;
-							// Split the path into segments for easier consumption
 							processedParams[`${newKey}Segments`] = value.split('/').filter(Boolean);
-							// Remove the original *-prefixed parameter
 							delete processedParams[key];
 						}
 					}
 
-					// Call the route handler with the processed parameters
-					const result = await handler(req, processedParams);
+					c.params = processedParams;
+					const result = await handler(c);
 
-					// Handle different types of responses:
 					if (result instanceof Response) {
-						// Return Response objects as-is
 						return result;
 					}
 
 					if (result == null) {
-						// null/undefined results become 404s
 						return new Response("Not Found", { status: 404 });
 					}
 
-					// Convert other results (like strings) to Response objects
-					return render(String(result));
+					return c.html(String(result));
 				});
 			}
 		} catch (error) {

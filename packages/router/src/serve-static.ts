@@ -1,5 +1,6 @@
 import * as path from "@std/path";
 import { contentType as getContentType } from "@std/media-types/content-type";
+import type { Context } from "./router.ts";
 
 type StaticFileOptions = {
   /** Directory to serve static files from */
@@ -53,7 +54,7 @@ type FileInfo = {
  * }));
  * ```
  */
-export function serveStatic(options: StaticFileOptions): (req: Request) => Promise<Response | null> {
+export function serveStatic(options: StaticFileOptions): (c: Context) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
   const { directory, dev = false, urlPrefix = "" } = options;
 
@@ -61,7 +62,7 @@ export function serveStatic(options: StaticFileOptions): (req: Request) => Promi
     try {
       const file = await Deno.open(filepath);
       const stat = await Deno.stat(filepath);
-      
+
       // Check cache in production mode
       if (!dev && fileCache.has(filepath)) {
         const cached = fileCache.get(filepath)!;
@@ -111,14 +112,14 @@ export function serveStatic(options: StaticFileOptions): (req: Request) => Promi
     }
   }
 
-  return async function staticFileHandler(req: Request) {
-    if (req.method !== "GET" && req.method !== "HEAD") {
+  return async function staticFileHandler(c: Context) {
+    if (c.req.method !== "GET" && c.req.method !== "HEAD") {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
-    const url = new URL(req.url);
+    const url = new URL(c.req.url);
     let pathname = decodeURIComponent(url.pathname);
-    
+
     // Remove URL prefix if specified
     if (urlPrefix && pathname.startsWith(urlPrefix)) {
       pathname = pathname.slice(urlPrefix.length);
@@ -132,7 +133,7 @@ export function serveStatic(options: StaticFileOptions): (req: Request) => Promi
 
     const filepath = path.join(directory, normalizedPath);
     const file = await getFileInfo(filepath);
-    
+
     // if file not found, return null to let the router handle it
     if (!file) {
       return null;
@@ -148,7 +149,7 @@ export function serveStatic(options: StaticFileOptions): (req: Request) => Promi
       headers.set("ETag", `W/"${file.hash}"`);
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
-      const ifNoneMatch = req.headers.get("If-None-Match");
+      const ifNoneMatch = c.req.headers.get("If-None-Match");
       if (ifNoneMatch === `W/"${file.hash}"`) {
         file.close();
         return new Response(null, { status: 304, headers });
@@ -157,7 +158,7 @@ export function serveStatic(options: StaticFileOptions): (req: Request) => Promi
       headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
     }
 
-    if (req.method === "HEAD") {
+    if (c.req.method === "HEAD") {
       file.close();
       return new Response(null, { status: 200, headers });
     }
