@@ -1,6 +1,7 @@
-import { intro as m, select as d, isCancel as i, outro as n, text as h } from "@clack/prompts";
+import { intro as m, select as d, isCancel as l, outro as r, text as h } from "@clack/prompts";
 import u from "degit";
-const l = [
+import { execSync as g } from "child_process";
+const i = [
   "white",
   "black",
   "amber",
@@ -17,7 +18,7 @@ const l = [
   "red",
   "sapphire",
   "hazel"
-], s = [
+], c = [
   "aspen",
   "birch",
   "cedar",
@@ -49,52 +50,47 @@ const l = [
   "teak",
   "walnut"
 ];
-function g() {
-  const e = l[Math.floor(Math.random() * l.length)], a = s[Math.floor(Math.random() * s.length)];
-  return `${e}-${a}`;
+function f() {
+  const t = i[Math.floor(Math.random() * i.length)], a = c[Math.floor(Math.random() * c.length)];
+  return `${t}-${a}`;
 }
-const c = [
+const s = [
   {
-    name: "Basics (recommended)",
-    repo: "https://github.com/withsapling/examples/basics",
-    outro: "npm run dev"
-  },
-  {
-    name: "Hello World (blank)",
-    repo: "https://github.com/withsapling/examples/single-file-hello-world",
-    outro: "npm run dev"
-  },
-  {
-    name: "Landing Page",
-    repo: "https://github.com/withsapling/examples/single-file-landing-page",
+    name: "Hello World",
+    repo: "https://github.com/withsapling/examples/node/hello-sapling",
     outro: "npm run dev"
   }
 ];
-async function x() {
+async function $() {
   m("Welcome to Sapling 🌲");
-  const e = await d({
+  const t = await d({
     message: "Select a project to clone:",
-    options: c.map((t) => ({
-      label: t.name,
-      value: t.repo
+    options: s.map((e) => ({
+      label: e.name,
+      value: e.repo
     }))
-  }), a = c.find((t) => t.repo === e);
-  i(e) && (n("Operation cancelled"), Deno.exit(0));
-  const r = g(), o = await h({
+  }), a = s.find((e) => e.repo === t);
+  l(t) && (r("Operation cancelled"), Deno.exit(0));
+  const n = f(), o = await h({
     message: "Enter the project directory:",
-    placeholder: `./${r}`,
-    initialValue: `./${r}`
+    placeholder: `./${n}`,
+    initialValue: `./${n}`
   });
-  i(o) && (n("Operation cancelled"), Deno.exit(0)), await (await u(e, {
+  l(o) && (r("Operation cancelled"), Deno.exit(0)), await (await u(t, {
     force: !0
   })).clone(o);
+  try {
+    g("npm install", { cwd: o, stdio: "inherit" });
+  } catch (e) {
+    console.error("Failed to run npm install:", e);
+  }
   const p = `Next steps:
 
  1. cd ${o}
 
  2. ${a?.outro}`;
-  n(p);
+  r(p);
 }
 export {
-  x as default
+  $ as default
 };

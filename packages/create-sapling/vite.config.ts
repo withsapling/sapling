@@ -10,7 +10,7 @@ export default defineConfig({
       fileName: () => "index.js",
     },
     rollupOptions: {
-      external: ["@clack/prompts", "degit"],
+      external: ["@clack/prompts", "degit", "child_process"],
     },
     outDir: "dist",
     emptyOutDir: true,
