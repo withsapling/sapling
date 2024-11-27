@@ -1,10 +1,10 @@
 import { intro, outro, text, select, isCancel } from "@clack/prompts";
 import degit from "degit";
-import { generateName } from "./name-generator.ts";
-import { templates } from "./templates.ts";
+import { generateName } from "./name-generator.js";
+import { templates } from "./templates.js";
 
 // Export the init function so it can be called from other files
-export async function init() {
+export default async function init() {
   intro(`Welcome to Sapling 🌲`);
 
   const repo = await select({

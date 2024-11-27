@@ -4,12 +4,13 @@ A micro SSR framework for generating content-first websites.
 
 ## Packages
 
-| Package | Description | JSR |
+| Package | Description | Version |
 |---------|-------------|-----|
 | [sapling](./packages/sapling/) | A micro SSR framework | [![JSR](https://jsr.io/badges/@sapling/sapling)](https://jsr.io/@sapling/sapling) |
 | [router](./packages/router/) | A micro router for Sapling sites or Deno projects | [![JSR](https://jsr.io/badges/@sapling/router)](https://jsr.io/@sapling/router) |
 | [create](./packages/create/) | A CLI for creating Sapling projects | [![JSR](https://jsr.io/badges/@sapling/create)](https://jsr.io/@sapling/create) |
 | [markdown](./packages/markdown/) | A markdown parser for Sapling sites or Deno projects | [![JSR](https://jsr.io/badges/@sapling/markdown)](https://jsr.io/@sapling/markdown) |
+| [create-sapling](./packages/create-sapling/) | A CLI for creating Sapling projects with npm | [![npm](https://img.shields.io/npm/v/create-sapling.svg)](https://www.npmjs.com/package/create-sapling) |
 
 
 ## Examples
