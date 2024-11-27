@@ -1,3 +1,9 @@
+// load urlpattern-polyfill if not supported in the run time such as Node.js
+// @ts-ignore: Property 'URLPattern' does not exist 
+if (!globalThis.URLPattern) {
+  await import("urlpattern-polyfill");
+}
+
 /**
  * Context object passed to route handlers
  * @example
