@@ -4,7 +4,7 @@ A Modern SSR framework for generating content-first websites.
 
  - It is multi-runtime, meaning you can use it with [Deno](https://deno.com/), [Node](https://nodejs.org/), [Bun](https://bun.sh/), and [Cloudflare Workers](https://developers.cloudflare.com/workers/). 
  - It includes support for Tailwind CSS via [UnoCSS](https://github.com/unocss/unocss).
- - It is completely buildless and does not require a bundler.
+ - It is completely buildless meaning it has no build step and does not rely on a bundler.
 
 
 ## Getting Started  
