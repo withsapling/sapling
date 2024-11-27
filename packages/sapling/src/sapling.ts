@@ -93,6 +93,23 @@ export interface Context {
    * ```
    */
   text(content: string): Response;
+
+  /**
+   * Redirect to another URL
+   * @param location - URL to redirect to
+   * @param status - HTTP status code (default: 302)
+   * @example
+   * ```ts
+   * site.get("/old-page", (c) => {
+   *   return c.redirect("/new-page");
+   * });
+   * 
+   * site.get("/permanent-redirect", (c) => {
+   *   return c.redirect("/new-location", 301);
+   * });
+   * ```
+   */
+  redirect(location: string, status?: number): Response;
 }
 
 /** Handler function type for processing requests */
@@ -294,6 +311,10 @@ export class Sapling {
       }),
       text: (content: string) => new Response(content, {
         headers: { "content-type": "text/plain; charset=UTF-8" }
+      }),
+      redirect: (location: string, status = 302) => new Response(null, {
+        status,
+        headers: { Location: location }
       })
     };
   }
