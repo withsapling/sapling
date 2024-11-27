@@ -1,6 +1,6 @@
 # Sapling
 
-A micro SSR framework for generating content-first websites. 
+A Modern SSR framework for generating content-first websites. 
 
 ## Packages
 
@@ -19,7 +19,7 @@ We would recommend checking out the [Sapling Examples Repository](https://github
 
 ## Attributions
 
-- [Hono](https://github.com/honojs/hono) - We use Hono's amazing HTML helpers for Sapling sites.
+- [Hono](https://github.com/honojs/hono) - We use Hono's amazing HTML helpers for escaping HTML templates. We're also huge fans of their routing approach which is why we've borrowed some of their ideas for Sapling.
 - [UnoCSS](https://github.com/unocss/unocss) - We use UnoCSS for atomic CSS.
-- [micromark](https://github.com/micromark/micromark) - The markdown parser
-- [shiki](https://github.com/shikijs/shiki) - The code highlighter
+- [micromark](https://github.com/micromark/micromark) - Our markdown parser.
+- [shiki](https://github.com/shikijs/shiki) - The code highlighter for syntax highlighting.
