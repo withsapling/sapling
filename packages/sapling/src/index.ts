@@ -1,14 +1,18 @@
-import { Layout } from "./sapling.ts";
-import LandingLayout from "./LandingLayout.ts";
+import { Sapling } from "./sapling.ts";
+import { Layout } from "./sapling-layout.ts";
+import { serveStatic } from "./serve-static.ts";
 
 // export html and raw helpers from hono
 export { html, raw } from "@hono/hono/html";
 
-// export types
-export type { LayoutProps, HtmlContent } from "./types/index.ts";
-
-// export layout module
-export { LandingLayout };
+// export Sapling class
+export { Sapling };
 
 // export functions
 export { Layout };
+
+// export serve-static function
+export { serveStatic };
+
+// export types
+export type { LayoutProps, HtmlContent, Context } from "./types/index.ts";

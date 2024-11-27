@@ -1,69 +1,331 @@
-import { createGenerator } from "@unocss/core";
-import presetUno from "@unocss/preset-uno";
-import { html, raw } from "@hono/hono/html";
-import type { LayoutProps } from "./types/index.ts";
-import type { UserConfig } from "@unocss/core";
-
 /**
- * The Layout function creates an HTML document with UnoCSS support and optional Tailwind reset styles.
- * 
- * @returns A Promise that resolves to the complete HTML document as a string
- * 
- * @param props - The properties for the layout
- * @param props.unoConfig - Optional custom UnoCSS configuration. If not provided, uses the default UnoCSS preset
- * @param props.disableTailwindReset - When true, removes the default Tailwind reset styles
- * @param props.head - Additional content to inject into the document's head section
- * @param props.bodyClass - Optional class string to add to the body element
- * @param props.children - The content to render in the body of the page
+ * Context object passed to route handlers
+ * @example
+ * ```ts
+ * site.get("/users/:id", async (c: Context) => {
+ *   // Access URL parameters
+ *   const userId = c.params.id;
+ *   
+ *   // Access query parameters
+ *   const sort = c.query().get("sort");
+ *   
+ *   // Parse JSON body
+ *   const body = await c.json<{ name: string }>();
+ *   
+ *   // Use shared state
+ *   c.state.user = await getUser(userId);
+ * });
+ * ```
  * 
  * @example
  * ```ts
- * // Basic usage
- * const html = await Layout({ children: html`<h1>Hello World</h1>` });
+ * site.get("/", (c) => {
+ *   return c.json({ message: "Hello, world!" });
+ * });
  * ```
  */
-export async function Layout(props: LayoutProps): Promise<string> {
+export interface Context {
+  /** The original request object */
+  req: {
+    param: (name: string) => string;
+    method: string;
+    url: string;
+    headers: Headers;
+  };
+  /** Shared state object for passing data between middleware */
+  state: Record<string, unknown>;
 
-  // UnoCSS config
-  let config: UserConfig;
-  // If no config is provided, use the default UnoCSS preset
-  if (props.unoConfig) {
-    config = props.unoConfig;
-  } else {
-    config = {
-      presets: [presetUno()],
+  /**
+   * Get URL query parameters
+   * @returns URLSearchParams object containing query parameters
+   */
+  query(): URLSearchParams;
+
+  /**
+   * Parse request body as JSON
+   * @template T - The expected type of the JSON data
+   * @returns Promise resolving to the parsed JSON data
+   * @example
+   * ```ts
+   * site.post("/api/users", async (c) => {
+   *   const data = await c.jsonData<{ name: string }>();
+   *   return c.json({ created: data.name });
+   * });
+   * ```
+   */
+  jsonData<T>(): Promise<T>;
+
+  /**
+   * Send JSON response
+   * @example
+   * ```ts
+   * site.get("/api/user", (c) => {
+   *   return c.json({ name: "John", age: 30 });
+   * });
+   * ```
+   */
+  json(data: unknown): Response;
+
+  /**
+   * Get form data from request
+   * @returns Promise resolving to FormData object
+   */
+  formData(): Promise<FormData>;
+
+  /**
+   * Render HTML response
+   * @example
+   * ```ts
+   * site.get("/", (c) => {
+   *   return c.html("<h1>Hello World</h1>");
+   * });
+   * ```
+   */
+  html(content: string): Response;
+
+  /**
+   * Send text response
+   * @example
+   * ```ts
+   * site.get("/text", (c) => {
+   *   return c.text("Hello World");
+   * });
+   * ```
+   */
+  text(content: string): Response;
+}
+
+/** Handler function type for processing requests */
+type ContextHandler = (c: Context) => Response | Promise<Response | null> | null;
+
+/** Internal route configuration */
+type Route = {
+  pattern: URLPattern;
+  handler: ContextHandler;
+};
+
+/**
+ * Sapling class for handling HTTP requests
+ * @example
+ * ```ts
+ * const site = new Sapling();
+ * 
+ * // Basic route
+ * site.get("/", (c) => {
+ *   return new Response("Hello World!");
+ * });
+ * 
+ * // Route with parameters
+ * site.get("/users/:id", (c) => {
+ *   const userId = c.params.id;
+ *   return new Response(`User ${userId}`);
+ * });
+ * 
+ * // Handle POST with JSON body
+ * site.post("/api/users", async (c) => {
+ *   const data = await c.json<{ name: string }>();
+ *   return new Response(`Created user: ${data.name}`);
+ * });
+ * 
+ * // Custom 404 handler
+ * site.setNotFoundHandler((c) => {
+ *   return new Response("Custom Not Found", { status: 404 });
+ * });
+ * ```
+ */
+export class Sapling {
+  private routes: Map<string, Route[]> = new Map();
+  private notFoundHandler: ContextHandler = () =>
+    new Response("Not found", { status: 404 });
+
+  constructor() {
+    ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
+      this.routes.set(method, []);
+    });
+  }
+
+  /**
+   * Add a route handler for a specific HTTP method and path
+   * @param method - HTTP method
+   * @param path - URL pattern to match
+   * @param handler - Function to handle matching requests
+   */
+  private add(method: string, path: string, handler: ContextHandler): Sapling {
+    const patterns = [
+      new URLPattern({ pathname: path }),
+      new URLPattern({ pathname: path.endsWith('/') ? path : path + '/' })
+    ];
+
+    const routes = this.routes.get(method);
+    patterns.forEach(pattern => {
+      routes?.push({ pattern, handler });
+    });
+
+    return this;
+  }
+
+  /**
+   * Add a GET route handler
+   * @example
+   * ```ts
+   * // Basic route
+   * site.get("/hello", (c) => {
+   *   return new Response("Hello World!");
+   * });
+   * 
+   * // Route with URL parameters
+   * site.get("/users/:id/posts/:postId", (c) => {
+   *   const { id, postId } = c.params;
+   *   return new Response(`User ${id}, Post ${postId}`);
+   * });
+   * 
+   * // Using query parameters
+   * site.get("/search", (c) => {
+   *   const query = c.query().get("q");
+   *   return new Response(`Search: ${query}`);
+   * });
+   * ```
+   */
+  get(path: string, handler: ContextHandler): Sapling {
+    return this.add("GET", path, handler);
+  }
+
+  /**
+   * Add a POST route handler
+   * @example
+   * ```ts
+   * // Handle JSON body
+   * site.post("/api/users", async (c) => {
+   *   const user = await c.json<{ name: string; email: string }>();
+   *   return new Response(`Created user: ${user.name}`);
+   * });
+   * 
+   * // Handle form data
+   * site.post("/upload", async (c) => {
+   *   const form = await c.formData();
+   *   const file = form.get("file");
+   *   return new Response(`Uploaded: ${file.name}`);
+   * });
+   * ```
+   */
+  post(path: string, handler: ContextHandler): Sapling {
+    return this.add("POST", path, handler);
+  }
+
+  /**
+   * Add a PUT route handler
+   * @param path - URL pattern to match
+   * @param handler - Function to handle matching requests
+   */
+  put(path: string, handler: ContextHandler): Sapling {
+    return this.add("PUT", path, handler);
+  }
+
+  /**
+   * Add a DELETE route handler
+   * @param path - URL pattern to match
+   * @param handler - Function to handle matching requests
+   */
+  delete(path: string, handler: ContextHandler): Sapling {
+    return this.add("DELETE", path, handler);
+  }
+
+  /**
+   * Add a PATCH route handler
+   * @param path - URL pattern to match
+   * @param handler - Function to handle matching requests
+   */
+  patch(path: string, handler: ContextHandler): Sapling {
+    return this.add("PATCH", path, handler);
+  }
+
+  /**
+   * Set custom handler for 404 Not Found responses
+   * @example
+   * ```ts
+   * site.setNotFoundHandler((c) => {
+   *   // Return custom 404 page
+   *   return new Response("Custom Not Found Page", {
+   *     status: 404,
+   *     headers: { "Content-Type": "text/html" }
+   *   });
+   * });
+   * ```
+   */
+  setNotFoundHandler(handler: ContextHandler): Sapling {
+    this.notFoundHandler = handler;
+    return this;
+  }
+
+  /**
+   * Handle incoming fetch requests
+   * @param req - Request object
+   */
+  fetch = async (req: Request): Promise<Response> => {
+    const response = await this.handle(req);
+    const context = this.createContext(req, {});
+    const notFoundResponse = await this.notFoundHandler(context);
+    return response ?? notFoundResponse ?? new Response("Not found", { status: 404 });
+  };
+
+  /**
+   * Create a new context object for a request
+   * @param req - Request object
+   * @param params - URL parameters
+   */
+  private createContext(req: Request, params: Record<string, string>): Context {
+    return {
+      req: {
+        param: (name: string) => params[name] || '',
+        method: req.method,
+        url: req.url,
+        headers: req.headers,
+        // Add other request methods as needed
+      },
+      state: {},
+      query: () => new URL(req.url).searchParams,
+      jsonData: async <T>() => await req.clone().json() as T,
+      formData: async () => await req.clone().formData(),
+      html: (content: string) => new Response(content, {
+        headers: { "content-type": "text/html; charset=UTF-8" }
+      }),
+      json: (data: unknown) => new Response(JSON.stringify(data), {
+        headers: { "content-type": "application/json" }
+      }),
+      text: (content: string) => new Response(content, {
+        headers: { "content-type": "text/plain; charset=UTF-8" }
+      })
     };
   }
-  // Create the UnoCSS generator
-  const generator = createGenerator(config);
-  // Generate the CSS from the provided children and body class
-  const css = await generator.generate(`${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`);
 
-  // Tailwind Reset Minified
-  let resetStyles =
-    `*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:var(--un-default-border-color,#e5e7eb)}::after,::before{--un-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}[type=button],[type=reset],[type=submit],button{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}`;
+  /**
+   * Handle a request and find matching route
+   * @param req - Request object
+   */
+  async handle(req: Request): Promise<Response | null> {
+    const method = req.method;
+    const url = req.url;
 
-  // If the tailwind reset is disabled, remove the default tailwind reset
-  if (props.disableTailwindReset) {
-    resetStyles = ``;
+    const routes = this.routes.get(method);
+    if (!routes) {
+      return new Response("Method not allowed", { status: 405 });
+    }
+
+    for (const route of routes) {
+      const match = route.pattern.exec(url);
+      if (match) {
+        const groups = match.pathname.groups as Record<string, string | undefined>;
+        const params = Object.fromEntries(
+          Object.entries(groups).filter(([_, v]) => v !== undefined),
+        ) as Record<string, string>;
+
+        const context = this.createContext(req, params);
+        const response = await route.handler(context);
+        if (response === null) continue;
+        return response;
+      }
+    }
+
+    return null;
   }
-
-  // Return the HTML
-  return html`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<meta name="generator" content="Sapling v0.1.0">
-      ${props.disableTailwindReset ? html`` : html`<style>${raw(resetStyles)}</style>`}
-			<!-- UnoCSS CSS -->
-      <style>${raw(css.css)}</style>
-      ${props.head}
-    </head>
-    ${props.bodyClass ? html`<body class="${props.bodyClass}">` : html`<body>`}
-      ${props.children}
-    </body>
-    </html>
-  `;
 }
