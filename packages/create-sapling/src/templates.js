@@ -1,17 +1,7 @@
 export const templates = [
   {
-    name: "Basics (recommended)",
-    repo: "https://github.com/withsapling/examples/basics",
-    outro: "npm run dev",
-  },
-  {
-    name: "Hello World (blank)",
-    repo: "https://github.com/withsapling/examples/single-file-hello-world",
-    outro: "npm run dev",
-  },
-  {
-    name: "Landing Page",
-    repo: "https://github.com/withsapling/examples/single-file-landing-page",
+    name: "Hello World",
+    repo: "https://github.com/withsapling/examples/node/hello-sapling",
     outro: "npm run dev",
   },
 ];

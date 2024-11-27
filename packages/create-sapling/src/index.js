@@ -2,6 +2,7 @@ import { intro, outro, text, select, isCancel } from "@clack/prompts";
 import degit from "degit";
 import { generateName } from "./name-generator.js";
 import { templates } from "./templates.js";
+import { execSync } from "child_process";
 
 // Export the init function so it can be called from other files
 export default async function init() {
@@ -40,6 +41,12 @@ export default async function init() {
   });
 
   await emitter.clone(targetDir);
+
+  try {
+    execSync("npm install", { cwd: targetDir, stdio: "inherit" });
+  } catch (error) {
+    console.error("Failed to run npm install:", error);
+  }
 
   const nextSteps = `Next steps:\n\n 1. cd ${targetDir}\n\n 2. ${template?.outro}`;
 
