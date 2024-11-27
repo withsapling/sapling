@@ -1,0 +1,23 @@
+{
+  "name": "create-sapling",
+  "author": "withsapling",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/withsapling/create-sapling.git"
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "create-sapling": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "@clack/prompts": "^0.8.2",
+    "degit": "^2.8.4"
+  }
+}
