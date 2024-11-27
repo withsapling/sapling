@@ -10,7 +10,7 @@ if (!globalThis.URLPattern) {
  * ```ts
  * site.get("/users/:id", async (c: Context) => {
  *   // Access URL parameters
- *   const userId = c.params.id;
+ *   const userId = c.req.param("id");
  *   
  *   // Access query parameters
  *   const sort = c.query().get("sort");
