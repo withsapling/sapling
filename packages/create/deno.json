@@ -2,7 +2,7 @@
   "name": "@sapling/create",
   "description": "A CLI for creating Sapling projects",
   "license": "MIT",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "imports": {
     "@clack/prompts": "npm:@clack/prompts@^0.7.0",
     "degit": "npm:degit@^2.8.4"
