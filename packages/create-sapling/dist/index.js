@@ -1,7 +1,7 @@
-import { intro as m, select as d, isCancel as i, outro as r, text as h } from "@clack/prompts";
-import u from "degit";
-import { execSync as g } from "child_process";
-const l = [
+import { intro as g, select as m, isCancel as c, outro as l, text as f, spinner as w } from "@clack/prompts";
+import y from "degit";
+import { execSync as b } from "child_process";
+const d = [
   "white",
   "black",
   "amber",
@@ -18,7 +18,7 @@ const l = [
   "red",
   "sapphire",
   "hazel"
-], c = [
+], u = [
   "aspen",
   "birch",
   "cedar",
@@ -50,11 +50,11 @@ const l = [
   "teak",
   "walnut"
 ];
-function f() {
-  const t = l[Math.floor(Math.random() * l.length)], a = c[Math.floor(Math.random() * c.length)];
-  return `${t}-${a}`;
+function x() {
+  const t = d[Math.floor(Math.random() * d.length)], n = u[Math.floor(Math.random() * u.length)];
+  return `${t}-${n}`;
 }
-const s = [
+const h = [
   {
     name: "Basics (recommended)",
     repo: "https://github.com/withsapling/examples/node/basics",
@@ -65,37 +65,66 @@ const s = [
     repo: "https://github.com/withsapling/examples/node/hello-sapling",
     outro: "npm run dev"
   }
-];
-async function $() {
-  m("Welcome to Sapling 🌲");
-  const t = await d({
+], $ = (t, n, r = 12e4) => new Promise((o, i) => {
+  const a = setTimeout(() => {
+    i(new Error(`Operation timed out after ${r / 1e3} seconds`));
+  }, r);
+  try {
+    const s = b(t, n);
+    clearTimeout(a), o(s);
+  } catch (s) {
+    clearTimeout(a), i(s);
+  }
+});
+async function T() {
+  g("Welcome to Sapling 🌲");
+  const t = await m({
     message: "Select a project to clone:",
-    options: s.map((e) => ({
+    options: h.map((e) => ({
       label: e.name,
       value: e.repo
     }))
-  }), a = s.find((e) => e.repo === t);
-  i(t) && (r("Operation cancelled"), Deno.exit(0));
-  const n = f(), o = await h({
+  }), n = h.find((e) => e.repo === t);
+  c(t) && (l("Operation cancelled"), Deno.exit(0));
+  const r = x(), o = await f({
     message: "Enter the project directory:",
-    placeholder: `./${n}`,
-    initialValue: `./${n}`
+    placeholder: `./${r}`,
+    initialValue: `./${r}`
   });
-  i(o) && (r("Operation cancelled"), Deno.exit(0)), await (await u(t, {
+  c(o) && (l("Operation cancelled"), Deno.exit(0)), await (await y(t, {
     force: !0
   })).clone(o);
-  try {
-    g("npm install", { cwd: o, stdio: "inherit" });
-  } catch (e) {
-    console.error("Failed to run npm install:", e);
+  const a = await m({
+    message: "Would you like to install dependencies?",
+    options: [
+      { label: "Yes", value: !0 },
+      { label: "No", value: !1 }
+    ]
+  });
+  if (c(a) && (l("Operation cancelled"), Deno.exit(0)), a) {
+    const e = w();
+    e.start("Installing dependencies...");
+    try {
+      await $(
+        "npm install --no-audit",
+        { cwd: o },
+        12e4
+      ), e.stop("Dependencies installed successfully");
+    } catch (p) {
+      e.stop("Failed to install dependencies"), p.message.includes("timed out") ? console.error(
+        "Installation timed out after 120 seconds. Please try running 'npm install' manually."
+      ) : console.error("Error details:", p);
+    }
   }
-  const p = `Next steps:
+  const s = `Next steps:
 
  1. cd ${o}
 
- 2. ${a?.outro}`;
-  r(p);
+ 2. ${a ? "" : `npm install
+
+ 3. `}${n?.outro}`;
+  l(s);
 }
 export {
-  $ as default
+  T as default
 };
