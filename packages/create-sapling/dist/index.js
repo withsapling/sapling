@@ -1,7 +1,7 @@
-import { intro as m, select as d, isCancel as l, outro as r, text as h } from "@clack/prompts";
+import { intro as m, select as d, isCancel as i, outro as r, text as h } from "@clack/prompts";
 import u from "degit";
 import { execSync as g } from "child_process";
-const i = [
+const l = [
   "white",
   "black",
   "amber",
@@ -51,10 +51,15 @@ const i = [
   "walnut"
 ];
 function f() {
-  const t = i[Math.floor(Math.random() * i.length)], a = c[Math.floor(Math.random() * c.length)];
+  const t = l[Math.floor(Math.random() * l.length)], a = c[Math.floor(Math.random() * c.length)];
   return `${t}-${a}`;
 }
 const s = [
+  {
+    name: "Basics (recommended)",
+    repo: "https://github.com/withsapling/examples/node/basics",
+    outro: "npm run dev"
+  },
   {
     name: "Hello World",
     repo: "https://github.com/withsapling/examples/node/hello-sapling",
@@ -70,13 +75,13 @@ async function $() {
       value: e.repo
     }))
   }), a = s.find((e) => e.repo === t);
-  l(t) && (r("Operation cancelled"), Deno.exit(0));
+  i(t) && (r("Operation cancelled"), Deno.exit(0));
   const n = f(), o = await h({
     message: "Enter the project directory:",
     placeholder: `./${n}`,
     initialValue: `./${n}`
   });
-  l(o) && (r("Operation cancelled"), Deno.exit(0)), await (await u(t, {
+  i(o) && (r("Operation cancelled"), Deno.exit(0)), await (await u(t, {
     force: !0
   })).clone(o);
   try {
