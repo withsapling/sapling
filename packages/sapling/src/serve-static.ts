@@ -2,7 +2,6 @@ import * as path from "@std/path";
 import { contentType as getContentType } from "@std/media-types/content-type";
 import type { Context } from "./types/index.ts";
 
-/** Options for serving static files */
 type StaticFileOptions = {
   /** Directory to serve static files from */
   directory: string;
@@ -12,83 +11,12 @@ type StaticFileOptions = {
   urlPrefix?: string;
 };
 
-/** Information about a static file */
 type FileInfo = {
-  /** Full path to the file */
   path: string;
-  /** File size in bytes */
   size: number;
-  /** File hash for ETag */
   hash: string;
-  /** File content as a readable stream */
   readable: ReadableStream;
-  /** Function to close the file handle */
   close: () => void;
-};
-
-/** Detects if running in Node.js environment */
-const isNode = typeof process !== 'undefined' &&
-  process.versions != null &&
-  process.versions.node != null;
-
-/**
- * Converts a Node.js readable stream to a Web ReadableStream
- * @param nodeStream Node.js ReadStream to convert
- * @returns Web ReadableStream
- */
-function fileStreamToWeb(nodeStream: any): ReadableStream {
-  if (!isNode) return nodeStream;
-
-  return new ReadableStream({
-    start(controller) {
-      nodeStream.on('data', (chunk: Uint8Array) => controller.enqueue(chunk));
-      nodeStream.on('end', () => controller.close());
-      nodeStream.on('error', (err: Error) => controller.error(err));
-    },
-  });
-}
-
-/** 
- * Runtime abstraction for file system operations.
- * Provides consistent APIs for both Deno and Node.js environments.
- */
-const runtime = {
-  /**
-   * Opens a file and returns a readable stream
-   * @param filepath Path to the file to open
-   */
-  async open(filepath: string) {
-    if (isNode) {
-      const fs = await import('node:fs/promises');
-      const handle = await fs.open(filepath, 'r');
-      return {
-        readable: await fileStreamToWeb(handle.createReadStream()),
-        close: () => handle.close()
-      };
-    } else {
-      const file = await Deno.open(filepath);
-      return {
-        readable: file.readable,
-        close: () => file.close()
-      };
-    }
-  },
-
-  /**
-   * Gets file stats
-   * @param filepath Path to the file
-   */
-  async stat(filepath: string) {
-    if (isNode) {
-      const fs = await import('node:fs/promises');
-      return fs.stat(filepath);
-    } else {
-      return Deno.stat(filepath);
-    }
-  },
-
-  /** Path utilities for the current runtime */
-  path: isNode ? await import('node:path') : await import('@std/path'),
 };
 
 /**
@@ -132,35 +60,28 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
 
   async function getFileInfo(filepath: string): Promise<FileInfo | null> {
     try {
-      const stat = await runtime.stat(filepath);
+      const file = await Deno.open(filepath);
+      const stat = await Deno.stat(filepath);
 
       // Check cache in production mode
       if (!dev && fileCache.has(filepath)) {
         const cached = fileCache.get(filepath)!;
-        const mtime = stat.mtime?.getTime() || 0;
-        if (cached.mtime === mtime) {
-          const file = await runtime.open(filepath);
+        if (cached.mtime === stat.mtime?.getTime()) {
           return {
             path: filepath,
             size: stat.size,
             hash: cached.hash,
-            readable: file.readable,
-            close: file.close,
+            readable: (await Deno.open(filepath)).readable,
+            close: () => file.close(),
           };
         }
       }
 
-      // Initial file open for hash calculation
-      const file = await runtime.open(filepath);
-
       // Calculate hash for ETag
       const hash = await crypto.subtle.digest(
         "SHA-1",
-        isNode
-          ? await streamToBuffer(file.readable)
-          : await file.readable.tee()[0].getReader().read().then(r => r.value || new Uint8Array())
+        new Uint8Array(await file.readable.getReader().read().then(r => r.value || new Uint8Array()))
       );
-
       const hashHex = Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, "0"))
         .join("");
@@ -174,38 +95,21 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
       }
 
       // Open a new file handle for the response
-      const responseFile = await runtime.open(filepath);
+      const responseFile = await Deno.open(filepath);
 
       return {
         path: filepath,
         size: stat.size,
         hash: hashHex,
         readable: responseFile.readable,
-        close: responseFile.close,
+        close: () => {
+          file.close();
+          responseFile.close();
+        },
       };
     } catch {
       return null;
     }
-  }
-
-  // Helper functions
-  async function streamToBuffer(stream: ReadableStream): Promise<Uint8Array> {
-    const chunks: Uint8Array[] = [];
-    const reader = stream.getReader();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-    }
-
-    const result = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
-    let offset = 0;
-    for (const chunk of chunks) {
-      result.set(chunk, offset);
-      offset += chunk.length;
-    }
-    return result;
   }
 
   return async function staticFileHandler(c: Context) {
