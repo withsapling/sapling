@@ -1,6 +1,9 @@
 import * as path from "@std/path";
 import { contentType as getContentType } from "@std/media-types/content-type";
 import type { Context } from "./types/index.ts";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { Buffer } from "node:buffer";
 
 type StaticFileOptions = {
   /** Directory to serve static files from */
@@ -25,10 +28,10 @@ type FileInfo = {
  * @example
  * Basic usage:
  * ```ts
- * const site = new Sapling();
+ * const router = new Router();
  * 
  * // Serve all files from the "public" directory at "/static/*"
- * site.get("/static/*", serveStatic({ 
+ * router.get("/static/*", serveStatic({ 
  *   directory: "./public",
  *   urlPrefix: "/static"
  * }));
@@ -38,7 +41,7 @@ type FileInfo = {
  * With development mode:
  * ```ts
  * // Disable caching in development
- * site.get("/static/*", serveStatic({ 
+ * router.get("/static/*", serveStatic({ 
  *   directory: "./public",
  *   urlPrefix: "/static",
  *   dev: Deno.env.get("MODE") === "development"
@@ -49,7 +52,7 @@ type FileInfo = {
  * Serve files from the root path:
  * ```ts
  * // Will serve files like favicon.ico, robots.txt from the public directory
- * site.get("/*", serveStatic({ 
+ * router.get("/*", serveStatic({ 
  *   directory: "./public"
  * }));
  * ```
@@ -60,27 +63,35 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
 
   async function getFileInfo(filepath: string): Promise<FileInfo | null> {
     try {
-      const file = await Deno.open(filepath);
-      const stat = await Deno.stat(filepath);
+      const stats = await stat(filepath);
 
       // Check cache in production mode
       if (!dev && fileCache.has(filepath)) {
         const cached = fileCache.get(filepath)!;
-        if (cached.mtime === stat.mtime?.getTime()) {
+        if (cached.mtime === stats.mtime.getTime()) {
+          // Create a new stream for the response
+          const stream = createReadStream(filepath);
           return {
             path: filepath,
-            size: stat.size,
+            size: stats.size,
             hash: cached.hash,
-            readable: (await Deno.open(filepath)).readable,
-            close: () => file.close(),
+            readable: stream.readable as unknown as ReadableStream,
+            close: () => stream.close(),
           };
         }
       }
 
       // Calculate hash for ETag
+      const stream = createReadStream(filepath);
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+
       const hash = await crypto.subtle.digest(
         "SHA-1",
-        new Uint8Array(await file.readable.getReader().read().then(r => r.value || new Uint8Array()))
+        buffer
       );
       const hashHex = Array.from(new Uint8Array(hash))
         .map(b => b.toString(16).padStart(2, "0"))
@@ -90,21 +101,21 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
       if (!dev) {
         fileCache.set(filepath, {
           hash: hashHex,
-          mtime: stat.mtime?.getTime() || 0,
+          mtime: stats.mtime.getTime(),
         });
       }
 
-      // Open a new file handle for the response
-      const responseFile = await Deno.open(filepath);
+      // Create a new stream for the response
+      const responseStream = createReadStream(filepath);
 
       return {
         path: filepath,
-        size: stat.size,
+        size: stats.size,
         hash: hashHex,
-        readable: responseFile.readable,
+        readable: responseStream.readable as unknown as ReadableStream,
         close: () => {
-          file.close();
-          responseFile.close();
+          stream.close();
+          responseStream.close();
         },
       };
     } catch {
