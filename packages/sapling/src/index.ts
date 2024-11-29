@@ -1,6 +1,6 @@
 import { Sapling } from "./sapling.ts";
 import { Layout } from "./sapling-layout.ts";
-import { serveStatic } from "./serve-static.ts";
+import { serveStatic } from "./serve-static/index.ts";
 
 // export html and raw helpers from hono
 export { html, raw } from "@hono/hono/html";

@@ -1,6 +1,8 @@
-import * as path from "@std/path";
+import * as path from "node:path";
+import * as fs from "node:fs/promises";
+import * as crypto from "node:crypto";
 import { contentType as getContentType } from "@std/media-types/content-type";
-import type { Context } from "./types/index.ts";
+import type { Context } from "../types/index.ts";
 
 type StaticFileOptions = {
   /** Directory to serve static files from */
@@ -15,97 +17,51 @@ type FileInfo = {
   path: string;
   size: number;
   hash: string;
-  readable: ReadableStream;
-  close: () => void;
+  stream: fs.FileHandle;
 };
 
-/**
- * Serves static files with caching support and optional development mode.
- * 
- * @example
- * Basic usage:
- * ```ts
- * const router = new Router();
- * 
- * // Serve all files from the "public" directory at "/static/*"
- * router.get("/static/*", serveStatic({ 
- *   directory: "./public",
- *   urlPrefix: "/static"
- * }));
- * ```
- * 
- * @example
- * With development mode:
- * ```ts
- * // Disable caching in development
- * router.get("/static/*", serveStatic({ 
- *   directory: "./public",
- *   urlPrefix: "/static",
- *   dev: Deno.env.get("MODE") === "development"
- * }));
- * ```
- * 
- * @example
- * Serve files from the root path:
- * ```ts
- * // Will serve files like favicon.ico, robots.txt from the public directory
- * router.get("/*", serveStatic({ 
- *   directory: "./public"
- * }));
- * ```
- */
 export function serveStatic(options: StaticFileOptions): (c: Context) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
   const { directory, dev = false, urlPrefix = "" } = options;
 
   async function getFileInfo(filepath: string): Promise<FileInfo | null> {
     try {
-      const file = await Deno.open(filepath);
-      const stat = await Deno.stat(filepath);
+      const file = await fs.open(filepath);
+      const stat = await fs.stat(filepath);
 
       // Check cache in production mode
       if (!dev && fileCache.has(filepath)) {
         const cached = fileCache.get(filepath)!;
-        if (cached.mtime === stat.mtime?.getTime()) {
+        if (cached.mtime === stat.mtime.getTime()) {
+          const newFile = await fs.open(filepath);
           return {
             path: filepath,
             size: stat.size,
             hash: cached.hash,
-            readable: (await Deno.open(filepath)).readable,
-            close: () => file.close(),
+            stream: newFile,
           };
         }
       }
 
       // Calculate hash for ETag
-      const hash = await crypto.subtle.digest(
-        "SHA-1",
-        new Uint8Array(await file.readable.getReader().read().then(r => r.value || new Uint8Array()))
-      );
-      const hashHex = Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("");
+      const fileBuffer = await fs.readFile(filepath);
+      const hash = crypto.createHash('sha1')
+        .update(fileBuffer)
+        .digest('hex');
 
       // Cache the hash in production
       if (!dev) {
         fileCache.set(filepath, {
-          hash: hashHex,
-          mtime: stat.mtime?.getTime() || 0,
+          hash,
+          mtime: stat.mtime.getTime(),
         });
       }
-
-      // Open a new file handle for the response
-      const responseFile = await Deno.open(filepath);
 
       return {
         path: filepath,
         size: stat.size,
-        hash: hashHex,
-        readable: responseFile.readable,
-        close: () => {
-          file.close();
-          responseFile.close();
-        },
+        hash,
+        stream: file,
       };
     } catch {
       return null;
@@ -151,7 +107,7 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
 
       const ifNoneMatch = c.req.headers.get("If-None-Match");
       if (ifNoneMatch === `W/"${file.hash}"`) {
-        file.close();
+        await file.stream.close();
         return new Response(null, { status: 304, headers });
       }
     } else {
@@ -159,10 +115,25 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
     }
 
     if (c.req.method === "HEAD") {
-      file.close();
+      await file.stream.close();
       return new Response(null, { status: 200, headers });
     }
 
-    return new Response(file.readable, { headers });
+    // Create a ReadableStream from the file
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          const buffer = await file.stream.readFile();
+          controller.enqueue(buffer);
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        } finally {
+          await file.stream.close();
+        }
+      }
+    });
+
+    return new Response(readable, { headers });
   };
 }
