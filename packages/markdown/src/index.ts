@@ -79,8 +79,7 @@ export async function renderMarkdown(
             }
             usedIds.add(uniqueId);
 
-            this.tag(`<h${token.depth} id="${uniqueId}">`);
-            return;
+            return `<h${token.depth} id="${uniqueId}">`;
           }
         }
       }
