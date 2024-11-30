@@ -1,6 +1,20 @@
-import { micromark } from "micromark";
+import { micromark, type Options } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
 import { codeToHtml } from "shiki";
+import { toString } from "mdast-util-to-string";
+
+// Generate GitHub-style heading IDs
+function generateId(text: string): string {
+  return text
+    .toLowerCase()
+    // Remove non-word characters
+    .replace(/[^\w\s-]/g, '')
+    // Replace spaces with hyphens
+    .replace(/\s+/g, '-')
+    // Replace multiple hyphens with a single hyphen
+    .replace(/-+/g, '-')
+    .trim();
+}
 
 interface ThemeOptions {
   light?: string;
@@ -11,12 +25,36 @@ export async function renderMarkdown(
   markdown: string,
   themes?: ThemeOptions
 ): Promise<string> {
-  // Process markdown
-  let html = micromark(markdown, {
+  // Track used IDs to ensure uniqueness
+  const usedIds = new Set<string>();
+
+  // Process markdown with heading IDs
+  let html = micromark(markdown, null, {
     allowDangerousHtml: true,
     extensions: [gfm()],
-    htmlExtensions: [gfmHtml()],
-  });
+    htmlExtensions: [
+      gfmHtml(),
+      {
+        enter: {
+          heading(token: any) {
+            const text = toString(token);
+            const id = generateId(text);
+
+            // Handle duplicate IDs
+            let uniqueId = id;
+            let counter = 1;
+            while (usedIds.has(uniqueId)) {
+              uniqueId = `${id}-${counter}`;
+              counter++;
+            }
+            usedIds.add(uniqueId);
+
+            return `<h${token.depth} id="${uniqueId}">`;
+          }
+        }
+      }
+    ],
+  } as Options);
 
   // Find all code blocks
   const codeBlocks =

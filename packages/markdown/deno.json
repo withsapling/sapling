@@ -2,8 +2,9 @@
   "name": "@sapling/markdown",
   "description": "A markdown parser for Sapling sites or Deno projects",
   "license": "MIT",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "imports": {
+    "mdast-util-to-string": "npm:mdast-util-to-string@^4.0.0",
     "micromark": "npm:micromark@^4.0.0",
     "micromark-extension-gfm": "npm:micromark-extension-gfm@^3.0.0",
     "shiki": "npm:shiki@^1.22.2"
