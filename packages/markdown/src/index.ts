@@ -1,7 +1,6 @@
 import { micromark, type Options } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
 import { codeToHtml } from "shiki";
-import { toString } from "mdast-util-to-string";
 
 // Generate GitHub-style heading IDs
 function generateId(text: string): string {
@@ -28,16 +27,47 @@ export async function renderMarkdown(
   // Track used IDs to ensure uniqueness
   const usedIds = new Set<string>();
 
-  // Process markdown with heading IDs
-  let html = micromark(markdown, null, {
+  // First pass: collect heading text
+  const headings = new Map<number, string>(); // token index to text
+  let currentHeadingIndex = -1;
+  let collectingHeading = false;
+
+  micromark(markdown, {
     allowDangerousHtml: true,
     extensions: [gfm()],
     htmlExtensions: [
       gfmHtml(),
       {
         enter: {
-          heading(token: any) {
-            const text = toString(token);
+          heading(token) {
+            currentHeadingIndex = token.index;
+            collectingHeading = true;
+          },
+          text(token) {
+            if (collectingHeading) {
+              headings.set(currentHeadingIndex, token.text);
+            }
+          }
+        },
+        exit: {
+          heading() {
+            collectingHeading = false;
+          }
+        }
+      }
+    ]
+  } as Options);
+
+  // Second pass: render with IDs
+  let html = micromark(markdown, {
+    allowDangerousHtml: true,
+    extensions: [gfm()],
+    htmlExtensions: [
+      gfmHtml(),
+      {
+        enter: {
+          heading(token) {
+            const text = headings.get(token.index) || '';
             const id = generateId(text);
 
             // Handle duplicate IDs
@@ -49,11 +79,12 @@ export async function renderMarkdown(
             }
             usedIds.add(uniqueId);
 
-            return `<h${token.depth} id="${uniqueId}">`;
+            this.tag(`<h${token.depth} id="${uniqueId}">`);
+            return;
           }
         }
       }
-    ],
+    ]
   } as Options);
 
   // Find all code blocks
