@@ -39,11 +39,11 @@ export async function renderMarkdown(
       gfmHtml(),
       {
         enter: {
-          heading(token) {
+          heading(token: any) {
             currentHeadingIndex = token.index;
             collectingHeading = true;
           },
-          text(token) {
+          text(token: any) {
             if (collectingHeading) {
               headings.set(currentHeadingIndex, token.text);
             }
@@ -66,7 +66,7 @@ export async function renderMarkdown(
       gfmHtml(),
       {
         enter: {
-          heading(token) {
+          heading(token: any) {
             const text = headings.get(token.index) || '';
             const id = generateId(text);
 
