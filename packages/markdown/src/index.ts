@@ -13,6 +13,8 @@ interface MarkdownOptions {
   generateHeadingIds?: boolean;
   generateAnchors?: boolean;
   idPrefix?: string;
+  gfm?: boolean;
+  breaks?: boolean;
 }
 
 export function renderMarkdown(
@@ -21,8 +23,8 @@ export function renderMarkdown(
 ): string | Promise<string> {
   // Configure marked options
   marked.use({
-    gfm: true,
-    breaks: true,
+    gfm: options.gfm ?? true,
+    breaks: options.breaks ?? true,
   });
 
   marked.use(
@@ -32,9 +34,11 @@ export function renderMarkdown(
     }),
   );
 
-  marked.use(gfmHeadingId({
-    prefix: options.idPrefix || "",
-  }));
+  marked.use(
+    gfmHeadingId({
+      prefix: options.idPrefix ?? undefined,
+    }),
+  );
 
   return marked(markdown);
 }
