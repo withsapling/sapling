@@ -24,7 +24,7 @@ export function renderMarkdown(
   // Configure marked options
   marked.use({
     gfm: options.gfm ?? true,
-    breaks: options.breaks ?? true,
+    breaks: options.breaks ?? false,
   });
 
   marked.use(
