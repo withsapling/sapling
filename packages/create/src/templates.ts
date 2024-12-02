@@ -5,7 +5,7 @@ export const templates = [
     outro: "deno task dev",
   },
   {
-    name: "Hello World (blank)",
+    name: "Hello World",
     repo: "https://github.com/withsapling/examples/deno/hello-sapling",
     outro: "deno task dev",
   },
