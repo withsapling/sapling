@@ -1,7 +1,7 @@
 import { intro, outro, text, select, isCancel, spinner } from "@clack/prompts";
 import degit from "degit";
-import { generateName } from "./name-generator.js";
-import { templates } from "./templates.js";
+import { generateName } from "./name-generator.ts";
+import { templates } from "./templates.ts";
 import { execSync } from "child_process";
 
 // Helper function to execute a command with a timeout
@@ -96,9 +96,8 @@ export default async function init() {
     }
   }
 
-  const nextSteps = `Next steps:\n\n 1. cd ${targetDir}\n\n 2. ${
-    !installDeps ? "npm install\n\n 3. " : ""
-  }${template?.outro}`;
+  const nextSteps = `Next steps:\n\n 1. cd ${targetDir}\n\n 2. ${!installDeps ? "npm install\n\n 3. " : ""
+    }${template?.outro}`;
 
   outro(nextSteps);
 }

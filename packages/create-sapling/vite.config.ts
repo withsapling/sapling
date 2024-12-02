@@ -5,7 +5,7 @@ export default defineConfig({
   build: {
     target: "node18",
     lib: {
-      entry: resolve(__dirname, "src/index.js"),
+      entry: resolve(__dirname, "src/index.ts"),
       formats: ["es"],
       fileName: () => "index.js",
     },
