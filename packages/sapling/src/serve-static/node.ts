@@ -87,8 +87,21 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
       return new Response("Forbidden", { status: 403 });
     }
 
-    const filepath = path.join(directory, normalizedPath);
-    const file = await getFileInfo(filepath);
+    // Try different file paths in order:
+    // 1. Exact path
+    // 2. Path with .html extension
+    // 3. Path/index.html if it's a directory
+    const possiblePaths = [
+      path.join(directory, normalizedPath),
+      path.join(directory, normalizedPath + ".html"),
+      path.join(directory, normalizedPath, "index.html")
+    ];
+
+    let file: FileInfo | null = null;
+    for (const filepath of possiblePaths) {
+      file = await getFileInfo(filepath);
+      if (file) break;
+    }
 
     // if file not found, return null to let the router handle it
     if (!file) {
@@ -96,7 +109,7 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
     }
 
     const headers = new Headers({
-      "Content-Type": getContentType(path.extname(filepath)) || "application/octet-stream",
+      "Content-Type": getContentType(path.extname(file.path)) || "application/octet-stream",
       "Content-Length": String(file.size),
     });
 
