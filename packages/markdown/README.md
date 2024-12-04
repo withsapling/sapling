@@ -15,5 +15,5 @@ const html = await renderMarkdown(markdown);
 
 ## Attributions
 
-- [micromark](https://github.com/micromark/micromark) - The markdown parser
+- [marked](https://github.com/markedjs/marked) - The markdown parser
 - [shiki](https://github.com/shikijs/shiki) - The code highlighter
