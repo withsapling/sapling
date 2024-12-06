@@ -1,4 +1,7 @@
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
 
+// This is intended to be used client side so we are loading in the dom types
 
 /**
  * @class SaplingIsland - A custom element for loading scripts with various loading strategies
