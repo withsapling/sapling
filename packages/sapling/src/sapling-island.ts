@@ -1,4 +1,8 @@
-// This is intended to be used client side so we are loading in the dom types
+// Check if we are in a browser environment
+const isBrowser = typeof globalThis !== 'undefined' && globalThis.HTMLElement;
+
+// Extract the superclass expression into a variable
+const BaseElement = isBrowser ? HTMLElement : class { } as typeof HTMLElement;
 
 /**
  * @class SaplingIsland - A custom element for loading scripts with various loading strategies
@@ -7,7 +11,7 @@
  * example:
  * <sapling-island src="https://example.com/script.js" loading="onvisible" timeout="10000"></sapling-island>
  */
-export class SaplingIsland extends HTMLElement {
+export class SaplingIsland extends BaseElement {
   loaded: boolean;
   observer: IntersectionObserver | null;
   timeoutId: number | null;
@@ -197,4 +201,7 @@ export class SaplingIsland extends HTMLElement {
   }
 }
 
-customElements.define("sapling-island", SaplingIsland);
+// Move the custom element registration inside a browser check
+if (isBrowser) {
+  customElements.define("sapling-island", SaplingIsland);
+}
