@@ -1,6 +1,3 @@
-/// <reference lib="dom" />
-/// <reference lib="dom.iterable" />
-
 // This is intended to be used client side so we are loading in the dom types
 
 /**
@@ -27,7 +24,7 @@ export class SaplingIsland extends HTMLElement {
   }
 
   // Attributes that trigger attributeChangedCallback
-  static get observedAttributes() {
+  static get observedAttributes(): string[] {
     return ["src", "type", "loading", "timeout"];
   }
 
