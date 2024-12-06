@@ -2,7 +2,7 @@
   "name": "@sapling/sapling",
   "description": "A micro SSR framework",
   "license": "MIT",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "imports": {
     "@hono/hono": "jsr:@hono/hono@^4.6.7",
     "@std/media-types": "jsr:@std/media-types@^1.1.0",
@@ -10,6 +10,9 @@
     "@unocss/core": "npm:@unocss/core@^0.64.0",
     "@unocss/preset-uno": "npm:@unocss/preset-uno@^0.64.1",
     "urlpattern-polyfill": "npm:urlpattern-polyfill@^10.0.0"
+  },
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
   "exports": {
     ".": "./src/index.ts"
