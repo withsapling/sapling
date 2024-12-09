@@ -50,6 +50,26 @@ export interface Context {
      * ```
      */
     header(name: string): string | undefined;
+    /**
+     * Parse request body as JSON
+     * @template T - The expected type of the JSON data
+     * @returns Promise resolving to the parsed JSON data
+     * @example
+     * ```ts
+     * const data = await c.req.json<{ name: string }>();
+     * ```
+     */
+    json<T>(): Promise<T>;
+    /**
+     * Get form data from request
+     * @returns Promise resolving to FormData object
+     * @example
+     * ```ts
+     * const form = await c.req.formData();
+     * const name = form.get('name');
+     * ```
+     */
+    formData(): Promise<FormData>;
   };
   /** Response headers for the request */
   res: {
@@ -87,20 +107,6 @@ export interface Context {
   query(): URLSearchParams;
 
   /**
-   * Parse request body as JSON
-   * @template T - The expected type of the JSON data
-   * @returns Promise resolving to the parsed JSON data
-   * @example
-   * ```ts
-   * site.post("/api/users", async (c) => {
-   *   const data = await c.jsonData<{ name: string }>();
-   *   return c.json({ created: data.name });
-   * });
-   * ```
-   */
-  jsonData<T>(): Promise<T>;
-
-  /**
    * Send JSON response
    * @example
    * ```ts
@@ -110,12 +116,6 @@ export interface Context {
    * ```
    */
   json(data: unknown): Response;
-
-  /**
-   * Get form data from request
-   * @returns Promise resolving to FormData object
-   */
-  formData(): Promise<FormData>;
 
   /**
    * Render HTML response
@@ -366,14 +366,14 @@ export class Sapling {
         url: req.url,
         headers: req.headers,
         header: (name: string) => req.headers.get(name) ?? undefined,
+        json: async <T>() => await req.clone().json() as T,
+        formData: async () => await req.clone().formData(),
       },
       res: {
         headers: new Headers(),
       },
       state: {} as Record<string, unknown>,
       query: () => new URL(req.url).searchParams,
-      jsonData: async <T>() => await req.clone().json() as T,
-      formData: async () => await req.clone().formData(),
       set: <T>(key: string, value: T) => {
         ctx.state[key] = value;
       },
