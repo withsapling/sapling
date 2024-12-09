@@ -14,5 +14,5 @@ export { Layout };
 // export serve-static function
 export { serveStatic };
 
-// export types
-export type { LayoutProps, HtmlContent, Context } from "./types/index.ts";
+// export all types from types/index.ts
+export type * from "./types/index.ts";
