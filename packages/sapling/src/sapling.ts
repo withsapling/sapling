@@ -37,6 +37,19 @@ export interface Context {
     method: string;
     url: string;
     headers: Headers;
+    /**
+     * Get a request header value
+     * @param name - The name of the header to get
+     * @returns The header value if it exists, otherwise undefined
+     * @example
+     * ```ts
+     * const auth = c.req.header('Authorization');
+     * if (auth?.startsWith('Bearer ')) {
+     *   // Handle bearer token
+     * }
+     * ```
+     */
+    header(name: string): string | undefined;
   };
   /** Response headers for the request */
   res: {
@@ -330,6 +343,7 @@ export class Sapling {
         method: req.method,
         url: req.url,
         headers: req.headers,
+        header: (name: string) => req.headers.get(name) ?? undefined,
       },
       res: {
         headers: new Headers(),
