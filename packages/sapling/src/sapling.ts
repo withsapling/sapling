@@ -35,8 +35,6 @@ export interface Context {
   req: {
     /**
      * Get URL parameters
-     * @param name - Optional parameter name. If not provided, returns all parameters
-     * @returns Single parameter value if name is provided, or all parameters if no name given
      * @example
      * ```ts
      * // Get single parameter
@@ -46,7 +44,8 @@ export interface Context {
      * const { id, commentId } = c.req.param();
      * ```
      */
-    param(name?: string): string | Record<string, string>;
+    param(): Record<string, string>;
+    param(name: string): string;
     method: string;
     url: string;
     headers: Headers;
@@ -69,10 +68,13 @@ export interface Context {
      * @returns Promise resolving to the parsed JSON data
      * @example
      * ```ts
-     * const data = await c.req.json<{ name: string }>();
+     * interface CreateSiteBody {
+     *   model: string;
+     * }
+     * const body = await c.req.json<CreateSiteBody>();
      * ```
      */
-    json<T>(): Promise<T>;
+    json<T = unknown>(): Promise<T>;
     /**
      * Get form data from request
      * @returns Promise resolving to FormData object
@@ -382,12 +384,18 @@ export class Sapling {
   private createContext(req: Request, params: Record<string, string>): Context {
     const ctx = {
       req: {
-        param: (name?: string) => name ? params[name] || '' : params,
+        param: ((name?: string) => {
+          if (name === undefined) return params;
+          return params[name] || '';
+        }) as {
+          (): Record<string, string>;
+          (name: string): string;
+        },
         method: req.method,
         url: req.url,
         headers: req.headers,
         header: (name: string) => req.headers.get(name) ?? undefined,
-        json: async <T>() => await req.clone().json() as T,
+        json: async <T = unknown>() => await req.clone().json() as T,
         formData: async () => await req.clone().formData(),
       },
       res: {
