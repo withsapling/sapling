@@ -38,6 +38,10 @@ export interface Context {
     url: string;
     headers: Headers;
   };
+  /** Response headers for the request */
+  res: {
+    headers: Headers;
+  };
   /** Shared state object for passing data between middleware */
   state: Record<string, unknown>;
 
@@ -320,32 +324,44 @@ export class Sapling {
    * @param params - URL parameters
    */
   private createContext(req: Request, params: Record<string, string>): Context {
-    return {
+    const ctx = {
       req: {
         param: (name: string) => params[name] || '',
         method: req.method,
         url: req.url,
         headers: req.headers,
-        // Add other request methods as needed
+      },
+      res: {
+        headers: new Headers(),
       },
       state: {},
       query: () => new URL(req.url).searchParams,
       jsonData: async <T>() => await req.clone().json() as T,
       formData: async () => await req.clone().formData(),
       html: (content: string) => new Response(content, {
-        headers: { "content-type": "text/html; charset=UTF-8" }
+        headers: {
+          "content-type": "text/html; charset=UTF-8",
+          ...Object.fromEntries(ctx.res.headers)
+        }
       }),
       json: (data: unknown) => new Response(JSON.stringify(data), {
-        headers: { "content-type": "application/json" }
+        headers: {
+          "content-type": "application/json",
+          ...Object.fromEntries(ctx.res.headers)
+        }
       }),
       text: (content: string) => new Response(content, {
-        headers: { "content-type": "text/plain; charset=UTF-8" }
+        headers: {
+          "content-type": "text/plain; charset=UTF-8",
+          ...Object.fromEntries(ctx.res.headers)
+        }
       }),
       redirect: (location: string, status = 302) => new Response(null, {
         status,
         headers: { Location: location }
       })
     };
+    return ctx;
   }
 
   /**

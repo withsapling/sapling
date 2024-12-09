@@ -102,7 +102,7 @@ export function setCookie(
     cookie += `; SameSite=${options.sameSite}`;
   }
 
-  c.req.headers.append('Set-Cookie', cookie);
+  c.res.headers.append('Set-Cookie', cookie);
 }
 
 /**
