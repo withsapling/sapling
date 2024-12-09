@@ -33,7 +33,20 @@ if (!globalThis.URLPattern) {
 export interface Context {
   /** The original request object */
   req: {
-    param: (name: string) => string;
+    /**
+     * Get URL parameters
+     * @param name - Optional parameter name. If not provided, returns all parameters
+     * @returns Single parameter value if name is provided, or all parameters if no name given
+     * @example
+     * ```ts
+     * // Get single parameter
+     * const id = c.req.param("id");
+     * 
+     * // Get all parameters
+     * const { id, commentId } = c.req.param();
+     * ```
+     */
+    param(name?: string): string | Record<string, string>;
     method: string;
     url: string;
     headers: Headers;
@@ -369,7 +382,7 @@ export class Sapling {
   private createContext(req: Request, params: Record<string, string>): Context {
     const ctx = {
       req: {
-        param: (name: string) => params[name] || '',
+        param: (name?: string) => name ? params[name] || '' : params,
         method: req.method,
         url: req.url,
         headers: req.headers,

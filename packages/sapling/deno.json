@@ -2,7 +2,7 @@
   "name": "@sapling/sapling",
   "description": "A micro SSR framework",
   "license": "MIT",
-  "version": "0.0.40",
+  "version": "0.0.41",
   "imports": {
     "@hono/hono": "jsr:@hono/hono@^4.6.7",
     "@std/media-types": "jsr:@std/media-types@^1.1.0",
