@@ -59,6 +59,28 @@ export interface Context {
   state: Record<string, unknown>;
 
   /**
+   * Set a value in the context state
+   * @param key - The key to set
+   * @param value - The value to store
+   * @example
+   * ```ts
+   * c.set('currentUser', decodedToken.uid);
+   * ```
+   */
+  set<T>(key: string, value: T): void;
+
+  /**
+   * Get a value from the context state
+   * @param key - The key to get
+   * @returns The value if it exists, otherwise undefined
+   * @example
+   * ```ts
+   * const userId = c.get<string>('currentUser');
+   * ```
+   */
+  get<T>(key: string): T | undefined;
+
+  /**
    * Get URL query parameters
    * @returns URLSearchParams object containing query parameters
    */
@@ -348,10 +370,16 @@ export class Sapling {
       res: {
         headers: new Headers(),
       },
-      state: {},
+      state: {} as Record<string, unknown>,
       query: () => new URL(req.url).searchParams,
       jsonData: async <T>() => await req.clone().json() as T,
       formData: async () => await req.clone().formData(),
+      set: <T>(key: string, value: T) => {
+        ctx.state[key] = value;
+      },
+      get: <T>(key: string): T | undefined => {
+        return ctx.state[key] as T | undefined;
+      },
       html: (content: string) => new Response(content, {
         headers: {
           "content-type": "text/html; charset=UTF-8",
