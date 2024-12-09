@@ -149,6 +149,16 @@ type Route = {
  *   return await next();
  * });
  * 
+ * // Route with middleware function
+ * async function middleware(c: Context, next: () => Promise<Response | null>) {
+ *   console.log("Global middleware");
+ *   return await next();
+ * }
+ * 
+ * site.get("/", middleware, (c) => {
+ *   return new Response("Hello World!");
+ * });
+ * 
  * // Route with specific middleware
  * site.get("/", 
  *   async (c, next) => {
