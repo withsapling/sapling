@@ -108,14 +108,16 @@ export interface Context {
 
   /**
    * Send JSON response
+   * @param data - The data to send as JSON
+   * @param status - HTTP status code (optional)
    * @example
    * ```ts
    * site.get("/api/user", (c) => {
-   *   return c.json({ name: "John", age: 30 });
+   *   return c.json({ name: "John", age: 30 }, 201);
    * });
    * ```
    */
-  json(data: unknown): Response;
+  json(data: unknown, status?: number): Response;
 
   /**
    * Render HTML response
@@ -130,14 +132,20 @@ export interface Context {
 
   /**
    * Send text response
+   * @param content - The text content to send
+   * @param status - HTTP status code (optional)
    * @example
    * ```ts
    * site.get("/text", (c) => {
    *   return c.text("Hello World");
    * });
+   * 
+   * site.get("/not-found", (c) => {
+   *   return c.text("Not Found", 404);
+   * });
    * ```
    */
-  text(content: string): Response;
+  text(content: string, status?: number): Response;
 
   /**
    * Redirect to another URL
@@ -386,13 +394,15 @@ export class Sapling {
           ...Object.fromEntries(ctx.res.headers)
         }
       }),
-      json: (data: unknown) => new Response(JSON.stringify(data), {
+      json: (data: unknown, status?: number) => new Response(JSON.stringify(data), {
+        status,
         headers: {
           "content-type": "application/json",
           ...Object.fromEntries(ctx.res.headers)
         }
       }),
-      text: (content: string) => new Response(content, {
+      text: (content: string, status?: number) => new Response(content, {
+        status,
         headers: {
           "content-type": "text/plain; charset=UTF-8",
           ...Object.fromEntries(ctx.res.headers)
