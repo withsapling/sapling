@@ -5,7 +5,7 @@ export interface CorsOptions {
    * Configures the Access-Control-Allow-Origin CORS header
    * @default "*"
    */
-  origin?: string | string[] | ((origin: string) => boolean | Promise<boolean>);
+  origin?: string | string[] | ((origin: string) => boolean | Promise<boolean>) | true;
 
   /**
    * Configures the Access-Control-Allow-Methods CORS header
@@ -39,7 +39,7 @@ export interface CorsOptions {
 }
 
 const defaultOptions: CorsOptions = {
-  origin: "*",
+  origin: true,
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
   allowedHeaders: ["*"],
   exposedHeaders: [],
@@ -77,11 +77,14 @@ export function cors(options: CorsOptions = {}): Middleware {
     if (c.req.method === "OPTIONS") {
       const headers = new Headers();
 
-      // Handle origin
+      // Simplified origin handling
       if (origin) {
         let allowOrigin = "*";
 
-        if (typeof opts.origin === "string") {
+        if (opts.origin === true) {
+          // Allow the requesting origin when opts.origin is true
+          allowOrigin = origin;
+        } else if (typeof opts.origin === "string") {
           allowOrigin = opts.origin;
         } else if (Array.isArray(opts.origin)) {
           allowOrigin = opts.origin.includes(origin) ? origin : "";
@@ -91,6 +94,10 @@ export function cors(options: CorsOptions = {}): Middleware {
 
         if (allowOrigin) {
           headers.set("Access-Control-Allow-Origin", allowOrigin);
+          // Add Vary header when not using wildcard
+          if (allowOrigin !== "*") {
+            headers.append("Vary", "Origin");
+          }
         }
       }
 
@@ -139,7 +146,10 @@ export function cors(options: CorsOptions = {}): Middleware {
     if (origin) {
       let allowOrigin = "*";
 
-      if (typeof opts.origin === "string") {
+      if (opts.origin === true) {
+        // Allow the requesting origin when opts.origin is true
+        allowOrigin = origin;
+      } else if (typeof opts.origin === "string") {
         allowOrigin = opts.origin;
       } else if (Array.isArray(opts.origin)) {
         allowOrigin = opts.origin.includes(origin) ? origin : "";
@@ -149,6 +159,10 @@ export function cors(options: CorsOptions = {}): Middleware {
 
       if (allowOrigin) {
         headers.set("Access-Control-Allow-Origin", allowOrigin);
+        // Add Vary header when not using wildcard
+        if (allowOrigin !== "*") {
+          headers.append("Vary", "Origin");
+        }
       }
     }
 
