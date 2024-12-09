@@ -119,10 +119,10 @@ export interface Context {
 }
 
 /** Handler function type for processing requests */
-type ContextHandler = (c: Context) => Response | Promise<Response | null> | null;
+export type ContextHandler = (c: Context) => Response | Promise<Response | null> | null;
 
 /** Middleware handler type */
-type Middleware = (c: Context, next: () => Promise<Response | null>) => Promise<Response | null>;
+export type Middleware = (c: Context, next: () => Promise<Response | null>) => Promise<Response | null>;
 
 /** Internal route configuration */
 type Route = {

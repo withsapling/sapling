@@ -1,6 +1,7 @@
 import type { UserConfig } from "@unocss/core";
 import type { HtmlEscapedString } from "@hono/hono/utils/html";
-import type { Context } from "../sapling.ts";
+import type { Context, Middleware } from "../sapling.ts";
+
 
 export type HtmlContent = string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
 
@@ -28,5 +29,5 @@ export interface LayoutProps {
 }
 
 // export Context type
-export type { Context };
+export type { Context, Middleware };
 

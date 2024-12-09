@@ -1,4 +1,4 @@
-import type { Context } from "./sapling.ts";
+import type { Context, Middleware } from "./sapling.ts";
 
 export interface CorsOptions {
   /**
@@ -67,7 +67,7 @@ const defaultOptions: CorsOptions = {
  * }));
  * ```
  */
-export function cors(options: CorsOptions = {}) {
+export function cors(options: CorsOptions = {}): Middleware {
   const opts = { ...defaultOptions, ...options };
 
   return async (c: Context, next: () => Promise<Response | null>) => {
