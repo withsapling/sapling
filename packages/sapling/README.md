@@ -17,8 +17,8 @@ A simpler SSR and API framework built on top of web standards. Sapling provides 
 
 ## Documentation
 
-- [Website](https://sapling.build)
-- [Documentation](https://sapling.build/docs)
+- [Website](https://sapling.land)
+- [Documentation](https://sapling.land/docs)
 
 ## Installation
 
