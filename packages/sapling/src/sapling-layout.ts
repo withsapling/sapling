@@ -3,6 +3,7 @@ import presetUno from "@unocss/preset-uno";
 import { html, raw } from "@hono/hono/html";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
+import { SAPLING_VERSION } from "./constants.ts";
 
 /**
  * The Layout function creates an HTML document with UnoCSS support and optional Tailwind reset styles.
@@ -55,7 +56,7 @@ export async function Layout(props: LayoutProps): Promise<string> {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<meta name="generator" content="Sapling v0.1.0">
+			<meta name="generator" content="Sapling v${SAPLING_VERSION}">
       ${props.disableTailwindReset ? html`` : html`<style>${raw(resetStyles)}</style>`}
 			<!-- UnoCSS CSS -->
       <style>${raw(css.css)}</style>
