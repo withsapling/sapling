@@ -13,8 +13,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./cors": "./src/cors.ts",
-    "./cookies": "./src/cookies.ts"
+    "./cors": "./src/cors.ts"
   },
   "compilerOptions": {
     "lib": ["ESNext", "DOM", "DOM.Iterable", "deno.ns"]
