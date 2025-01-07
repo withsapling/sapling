@@ -39,7 +39,7 @@ function bumpVersion(options: { major?: boolean; minor?: boolean }): void {
 
   if (!versionMatch) {
     console.error("Could not find SAPLING_VERSION in constants.ts");
-    process.exit(1);
+    Deno.exit(1);
   }
 
   let [major, minor, patch] = versionMatch.slice(1).map(Number);
