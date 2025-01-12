@@ -21,37 +21,33 @@ type FileInfo = {
 
 /**
  * Serves static files with caching support and optional development mode.
- * 
+ * @param options - Configuration options for serving static files
+ * @returns Middleware function that handles static file requests
  * @example
- * Basic usage:
  * ```ts
- * const router = new Router();
- * 
- * // Serve all files from the "public" directory at "/static/*"
- * router.get("/static/*", serveStatic({ 
+ * // Basic usage
+ * site.get("/static/*", serveStatic({ 
  *   directory: "./public",
  *   urlPrefix: "/static"
  * }));
- * ```
  * 
- * @example
- * With development mode:
- * ```ts
- * // Disable caching in development
- * router.get("/static/*", serveStatic({ 
+ * // A file in the public directory would be served at /static/index.html
+ * 
+ * // With development mode
+ * site.get("/static/*", serveStatic({ 
  *   directory: "./public",
  *   urlPrefix: "/static",
- *   dev: Deno.env.get("MODE") === "development"
+ *   dev: true
  * }));
- * ```
  * 
- * @example
- * Serve files from the root path:
- * ```ts
- * // Will serve files like favicon.ico, robots.txt from the public directory
- * router.get("/*", serveStatic({ 
+ * 
+ * // Serve from root path
+ * site.get("/*", serveStatic({ 
  *   directory: "./public"
  * }));
+ * 
+ * // A file in the public directory would be served at /index.html
+ * 
  * ```
  */
 export function serveStatic(options: StaticFileOptions): (c: Context) => Promise<Response | null> {

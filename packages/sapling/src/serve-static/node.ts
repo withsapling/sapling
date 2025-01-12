@@ -20,6 +20,35 @@ type FileInfo = {
   stream: fs.FileHandle;
 };
 
+/**
+ * Serves static files with caching support and optional development mode.
+ * @param options - Configuration options for serving static files
+ * @returns Middleware function that handles static file requests
+ * @example
+ * ```ts
+ * // Basic usage
+ * site.get("/static/*", serveStatic({ 
+ *   directory: "./public",
+ *   urlPrefix: "/static"
+ * }));
+ * 
+ * // A file in the public directory would be served at /static/index.html
+ * 
+ * // With development mode
+ * site.get("/static/*", serveStatic({ 
+ *   directory: "./public",
+ *   urlPrefix: "/static",
+ *   dev: true
+ * }));
+ * 
+ * // Serve from root path
+ * site.get("/*", serveStatic({ 
+ *   directory: "./public"
+ * }));
+ * 
+ * // A file in the public directory would be served at /index.html
+ * ```
+ */
 export function serveStatic(options: StaticFileOptions): (c: Context) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
   const { directory, dev = false, urlPrefix = "" } = options;
