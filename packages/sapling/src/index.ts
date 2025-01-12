@@ -16,3 +16,6 @@ export { serveStatic };
 
 // export all types from types/index.ts
 export * from "./types/index.ts";
+
+export type { Context } from "./sapling.ts";
+export type { LayoutProps } from "./types/index.ts";

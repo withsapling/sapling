@@ -25,6 +25,10 @@ export interface LayoutProps {
    * The children content to render in the body of the page
    */
   children: HtmlContent;
+  /**
+   * When true, returns a ReadableStream to stream the HTML output. Defaults to false
+   */
+  stream?: boolean;
 }
 
 // export Context, Middleware, Next types
