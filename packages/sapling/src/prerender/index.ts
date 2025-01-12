@@ -10,8 +10,6 @@ type PrerenderRoute = {
 type PrerenderOptions = {
   /** Directory to output the pre-rendered files */
   outputDir: string;
-  /** Development mode */
-  dev?: boolean;
   /** Function to create a context object */
   createContext: (req: Request, params: Record<string, string>) => Context;
 };

@@ -255,8 +255,15 @@ export class Sapling {
   private notFoundHandler: ContextHandler = () =>
     new Response("Not found", { status: 404 });
   private prerenderRoutes: { path: string; handler: ContextHandler; params?: Record<string, any>[] }[] = [];
+  private dev: boolean;
 
-  constructor() {
+  /**
+   * Create a new Sapling instance
+   * @param options - Configuration options
+   * @param options.dev - Enable development mode (default: false)
+   */
+  constructor(options: { dev?: boolean } = {}) {
+    this.dev = options.dev ?? false;
     ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
       this.routes.set(method, []);
     });
@@ -433,10 +440,8 @@ export class Sapling {
         };
 
         if (typeof content === "string") {
-          // If content is a string, return a Response with the string as the body
           return new Response(content, { headers });
         } else {
-          // If content is a ReadableStream, return a Response with the stream as the body
           return new Response(content, { headers });
         }
       },
@@ -459,6 +464,10 @@ export class Sapling {
         headers: { Location: location }
       })
     };
+
+    // Add dev mode to context state
+    ctx.state.dev = this.dev;
+
     return ctx;
   }
 
@@ -531,27 +540,28 @@ export class Sapling {
    */
   prerender(path: string, handler: ContextHandler, params?: Record<string, any>[]): Sapling {
     this.prerenderRoutes.push({ path, handler, params });
+
+    // In development mode, also register as a GET route for dynamic rendering
+    if (this.dev) {
+      this.get(path, handler);
+    }
+
     return this;
   }
 
   /**
    * Generate pre-rendered HTML files for registered routes
    * @param outputDir - The directory to output the HTML files
-   * @param options - Optional configuration for pre-rendering
    * @example
    * ```ts
    * // Generate pre-rendered pages in the dist directory
    * await site.generatePrerenderedPages("dist");
-   * 
-   * // With options
-   * await site.generatePrerenderedPages("dist", { dev: true });
    * ```
    */
-  async generatePrerenderedPages(outputDir: string, options: { dev?: boolean } = {}): Promise<void> {
+  async generatePrerenderedPages(outputDir: string): Promise<void> {
     const { generatePrerenderedPages } = await import("./prerender/index.ts");
     await generatePrerenderedPages(this.prerenderRoutes, {
       outputDir,
-      ...options,
       createContext: this.createContext.bind(this)
     });
   }
