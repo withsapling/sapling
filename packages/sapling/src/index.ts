@@ -1,6 +1,5 @@
 import { Sapling } from "./sapling.ts";
 import { Layout } from "./sapling-layout.ts";
-import { StreamedLayout } from "./sapling-streamed-layout.ts";
 import { serveStatic } from "./serve-static/index.ts";
 
 // export html and raw helpers from hono
@@ -17,8 +16,6 @@ export { serveStatic };
 
 // export all types from types/index.ts
 export * from "./types/index.ts";
-
-export { StreamedLayout };
 
 export type { Context } from "./sapling.ts";
 export type { LayoutProps } from "./types/index.ts";

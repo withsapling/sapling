@@ -143,7 +143,7 @@ export interface Context {
    * });
    * ```
    */
-  html(content: string): Response;
+  html(content: string | ReadableStream): Response;
 
   /**
    * Send text response
@@ -409,12 +409,20 @@ export class Sapling {
       get: <T>(key: string): T | undefined => {
         return ctx.state[key] as T | undefined;
       },
-      html: (content: string) => new Response(content, {
-        headers: {
+      html: (content: string | ReadableStream) => {
+        const headers = {
           "content-type": "text/html; charset=UTF-8",
-          ...Object.fromEntries(ctx.res.headers)
+          ...Object.fromEntries(ctx.res.headers),
+        };
+
+        if (typeof content === "string") {
+          // If content is a string, return a Response with the string as the body
+          return new Response(content, { headers });
+        } else {
+          // If content is a ReadableStream, return a Response with the stream as the body
+          return new Response(content, { headers });
         }
-      }),
+      },
       json: (data: unknown, status?: number) => new Response(JSON.stringify(data), {
         status,
         headers: {

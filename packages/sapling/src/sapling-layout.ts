@@ -1,6 +1,5 @@
 import { createGenerator } from "@unocss/core";
 import presetUno from "@unocss/preset-uno";
-import { html, raw } from "@hono/hono/html";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 import { SAPLING_VERSION } from "./constants.ts";
@@ -8,7 +7,7 @@ import { SAPLING_VERSION } from "./constants.ts";
 /**
  * The Layout function creates an HTML document with UnoCSS support and optional Tailwind reset styles.
  * 
- * @returns A Promise that resolves to the complete HTML document as a string
+ * @returns A Promise that resolves to the complete HTML document as a string or a ReadableStream that streams the HTML document
  * 
  * @param props - The properties for the layout
  * @param props.unoConfig - Optional custom UnoCSS configuration. If not provided, uses the default UnoCSS preset
@@ -16,15 +15,20 @@ import { SAPLING_VERSION } from "./constants.ts";
  * @param props.head - Additional content to inject into the document's head section
  * @param props.bodyClass - Optional class string to add to the body element
  * @param props.children - The content to render in the body of the page
+ * @param props.stream - When true, returns a ReadableStream to stream the HTML output. Defaults to false
  * 
  * @example
  * ```ts
- * // Basic usage
+ * // Basic usage (non-streaming)
  * const html = await Layout({ children: html`<h1>Hello World</h1>` });
+ *
+ * // Streaming usage
+ * const stream = Layout({ children: html`<h1>Hello World</h1>`, stream: true });
  * ```
  */
-export async function Layout(props: LayoutProps): Promise<string> {
-
+export function Layout(
+  props: LayoutProps,
+): Promise<string> | ReadableStream {
   // UnoCSS config
   let config: UserConfig;
   // If no config is provided, use the default UnoCSS preset
@@ -35,10 +39,6 @@ export async function Layout(props: LayoutProps): Promise<string> {
       presets: [presetUno()],
     };
   }
-  // Create the UnoCSS generator
-  const generator = createGenerator(config);
-  // Generate the CSS from the provided children and body class
-  const css = await generator.generate(`${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`);
 
   // Tailwind Reset Minified
   let resetStyles =
@@ -49,22 +49,75 @@ export async function Layout(props: LayoutProps): Promise<string> {
     resetStyles = ``;
   }
 
-  // Return the HTML
-  return html`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-			<meta name="generator" content="Sapling v${SAPLING_VERSION}">
-      ${props.disableTailwindReset ? html`` : html`<style>${raw(resetStyles)}</style>`}
-			<!-- UnoCSS CSS -->
-      <style>${raw(css.css)}</style>
-      ${props.head}
-    </head>
-    ${props.bodyClass ? html`<body class="${props.bodyClass}">` : html`<body>`}
-      ${props.children}
-    </body>
-    </html>
-  `;
+  // Non-streaming (original) logic
+  if (!props.stream) {
+    return (async () => {
+      // Create the UnoCSS generator
+      const generator = createGenerator(config);
+      // Generate the CSS from the provided children and body class
+      const css = await generator.generate(
+        `${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`,
+      );
+
+      // Return the HTML as a string
+      return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <meta name="generator" content="Sapling v${SAPLING_VERSION}">
+          ${props.disableTailwindReset ? `` : `<style>${resetStyles}</style>`}
+          <!-- UnoCSS CSS -->
+          <style>${css.css}</style>
+          ${props.head}
+        </head>
+        ${props.bodyClass ? `<body class="${props.bodyClass}">` : `<body>`}
+          ${props.children}
+        </body>
+        </html>
+      `;
+    })();
+  }
+
+  // Streaming logic
+  return new ReadableStream({
+    async start(controller) {
+      // Create the UnoCSS generator
+      const generator = createGenerator(config);
+      // Generate the CSS from the provided children and body class
+      const css = await generator.generate(
+        `${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`,
+      );
+
+      // Enqueue the beginning of the HTML document
+      controller.enqueue(
+        new TextEncoder().encode(
+          `<!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="generator" content="Sapling v${SAPLING_VERSION}">
+            ${props.disableTailwindReset ? `` : `<style>${resetStyles}</style>`}
+            <!-- UnoCSS CSS -->
+            <style>${css.css}</style>
+            ${props.head}`,
+        ),
+      );
+
+      // Enqueue the body and the rest of the HTML
+      controller.enqueue(
+        new TextEncoder().encode(
+          `${props.bodyClass ? `<body class="${props.bodyClass}">` : `<body>`}
+            ${props.children}
+          </body>
+          </html>`,
+        ),
+      );
+
+      // Close the stream
+      controller.close();
+    },
+  });
 }
