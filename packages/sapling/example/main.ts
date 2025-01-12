@@ -31,7 +31,7 @@ site.get("/streamed", async (c: Context) => {
       children: html`<main class="min-h-screen flex flex-col items-center justify-center">
       <h1 class="text-4xl font-bold">Hello World (Streamed)</h1>
       <a href="/" class="text-blue-500 hover:underline">View Regular Version</a>
-      <div class="mt-8 text-red-500">Hello</div>
+      <div class="mt-8 text-red-500 bg-red-100 px-4 py-2 rounded-md">Hello</div>
       <div id="slow-data">
         <script>
           (async () => {
