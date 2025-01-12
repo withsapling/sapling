@@ -1,13 +1,13 @@
 import type { Context } from "../types/index.ts";
 import type { ContextHandler } from "../sapling.ts";
 
-export type PrerenderRoute = {
+type PrerenderRoute = {
   path: string;
   handler: ContextHandler;
   params?: Record<string, any>[];
 };
 
-export type PrerenderOptions = {
+type PrerenderOptions = {
   /** Directory to output the pre-rendered files */
   outputDir: string;
   /** Development mode */
@@ -26,4 +26,4 @@ if (typeof Deno !== "undefined") {
 }
 
 export { generatePrerenderedPages };
-export type { PrerenderOptions }; 
+export type { PrerenderRoute, PrerenderOptions }; 
