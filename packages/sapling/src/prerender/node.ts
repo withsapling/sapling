@@ -2,6 +2,11 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import type { PrerenderRoute, PrerenderOptions } from "./index.ts";
 
+type NodeError = {
+  code?: string;
+  [key: string]: unknown;
+};
+
 /**
  * Generate pre-rendered HTML files for registered routes using Node.js file system APIs
  */
@@ -11,8 +16,9 @@ export async function generatePrerenderedPages(routes: PrerenderRoute[], options
   // Create output directory if it doesn't exist
   try {
     await fs.mkdir(outputDir, { recursive: true });
-  } catch (error: any) {
-    if (error?.code !== 'EEXIST') {
+  } catch (error) {
+    const nodeError = error as NodeError;
+    if (nodeError?.code !== 'EEXIST') {
       throw error;
     }
   }

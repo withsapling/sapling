@@ -4,7 +4,7 @@ import type { ContextHandler } from "../sapling.ts";
 type PrerenderRoute = {
   path: string;
   handler: ContextHandler;
-  params?: Record<string, any>[];
+  params?: Record<string, string>[];
 };
 
 type PrerenderOptions = {

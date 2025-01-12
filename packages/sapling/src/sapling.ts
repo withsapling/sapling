@@ -254,7 +254,7 @@ export class Sapling {
   private middleware: Middleware[] = [];
   private notFoundHandler: ContextHandler = () =>
     new Response("Not found", { status: 404 });
-  private prerenderRoutes: { path: string; handler: ContextHandler; params?: Record<string, any>[] }[] = [];
+  private prerenderRoutes: { path: string; handler: ContextHandler; params?: Record<string, string>[] }[] = [];
   private dev: boolean;
 
   /**
@@ -538,7 +538,7 @@ export class Sapling {
    * ]);
    * ```
    */
-  prerender(path: string, handler: ContextHandler, params?: Record<string, any>[]): Sapling {
+  prerender(path: string, handler: ContextHandler, params?: Record<string, string>[]): Sapling {
     this.prerenderRoutes.push({ path, handler, params });
 
     // In development mode, also register as a GET route for dynamic rendering
