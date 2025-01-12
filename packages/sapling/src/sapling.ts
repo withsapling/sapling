@@ -233,6 +233,20 @@ type Route = {
  *     return new Response("Hello World!");
  *   }
  * );
+ * 
+ * // Prerender a static route
+ * site.prerender("/about", (c) => {
+ *   return c.html("<h1>About Us</h1>");
+ * });
+ * 
+ * // Prerender dynamic routes with parameters
+ * site.prerender("/blog/:slug", async (c) => {
+ *   const post = await getPost(c.req.param("slug"));
+ *   return c.html(`<h1>${post.title}</h1>${post.content}`);
+ * }, [
+ *   { slug: "first-post" },
+ *   { slug: "second-post" }
+ * ]);
  * ```
  */
 export class Sapling {
@@ -240,6 +254,7 @@ export class Sapling {
   private middleware: Middleware[] = [];
   private notFoundHandler: ContextHandler = () =>
     new Response("Not found", { status: 404 });
+  private prerenderRoutes: { path: string; handler: ContextHandler; params?: Record<string, any>[] }[] = [];
 
   constructor() {
     ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
@@ -490,5 +505,54 @@ export class Sapling {
     }
 
     return null;
+  }
+
+  /**
+   * Register a route for pre-rendering with optional parameters
+   * @param path - The path to pre-render (can include dynamic segments like /:slug)
+   * @param handler - The route handler function
+   * @param params - Optional array of parameter objects to generate multiple pages
+   * @example
+   * ```ts
+   * // Prerender a static route
+   * site.prerender("/about", (c) => {
+   *   return c.html("<h1>About Us</h1>");
+   * });
+   * 
+   * // Prerender dynamic routes with parameters
+   * site.prerender("/blog/:slug", async (c) => {
+   *   const post = await getPost(c.req.param("slug"));
+   *   return c.html(`<h1>${post.title}</h1>${post.content}`);
+   * }, [
+   *   { slug: "first-post" },
+   *   { slug: "second-post" }
+   * ]);
+   * ```
+   */
+  prerender(path: string, handler: ContextHandler, params?: Record<string, any>[]): Sapling {
+    this.prerenderRoutes.push({ path, handler, params });
+    return this;
+  }
+
+  /**
+   * Generate pre-rendered HTML files for registered routes
+   * @param outputDir - The directory to output the HTML files
+   * @param options - Optional configuration for pre-rendering
+   * @example
+   * ```ts
+   * // Generate pre-rendered pages in the dist directory
+   * await site.generatePrerenderedPages("dist");
+   * 
+   * // With options
+   * await site.generatePrerenderedPages("dist", { dev: true });
+   * ```
+   */
+  async generatePrerenderedPages(outputDir: string, options: { dev?: boolean } = {}): Promise<void> {
+    const { generatePrerenderedPages } = await import("./prerender/index.ts");
+    await generatePrerenderedPages(this.prerenderRoutes, {
+      outputDir,
+      ...options,
+      createContext: this.createContext.bind(this)
+    });
   }
 }
