@@ -53,7 +53,7 @@ export function Layout(
   if (!props.stream) {
     return (async () => {
       // Create the UnoCSS generator
-      const generator = createGenerator(config);
+      const generator = await createGenerator(config);
       // Generate the CSS from the provided children and body class
       const css = await generator.generate(
         `${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`,
@@ -84,7 +84,7 @@ export function Layout(
   return new ReadableStream({
     async start(controller) {
       // Create the UnoCSS generator
-      const generator = createGenerator(config);
+      const generator = await createGenerator(config);
       // Generate the CSS from the provided children and body class
       const css = await generator.generate(
         `${props.bodyClass ? `${props.bodyClass} ` : ``} ${props.children}`,
