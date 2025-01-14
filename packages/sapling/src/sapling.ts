@@ -85,6 +85,16 @@ export interface Context {
      * ```
      */
     formData(): Promise<FormData>;
+    /**
+     * Get request body as text
+     * @returns Promise resolving to the request body as text
+     * @example
+     * ```ts
+     * const body = await c.req.text();
+     * console.log('Request body:', body);
+     * ```
+     */
+    text(): Promise<string>;
   };
   /** Response headers for the request */
   res: {
@@ -421,6 +431,7 @@ export class Sapling {
         header: (name: string) => req.headers.get(name) ?? undefined,
         json: async <T = unknown>() => await req.clone().json() as T,
         formData: async () => await req.clone().formData(),
+        text: async () => await req.clone().text(),
       },
       res: {
         headers: new Headers(),
