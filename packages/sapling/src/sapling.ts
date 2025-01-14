@@ -405,9 +405,14 @@ export class Sapling {
    */
   fetch = async (req: Request): Promise<Response> => {
     const response = await this.handle(req);
-    const context = this.createContext(req, {});
-    const notFoundResponse = await this.notFoundHandler(context);
-    return response ?? notFoundResponse ?? new Response("Not found", { status: 404 });
+
+    // If the response is null, we need to handle the 404 error
+    if (response === null) {
+      const context = this.createContext(req, {});
+      const notFoundResponse = await this.notFoundHandler(context);
+      return notFoundResponse ?? new Response("Not found", { status: 404 });
+    }
+    return response;
   };
 
   /**

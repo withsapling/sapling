@@ -2,7 +2,7 @@
   "name": "@sapling/sapling",
   "description": "A micro SSR framework",
   "license": "MIT",
-  "version": "0.2.0-beta.6",
+  "version": "0.2.0-beta.7",
   "imports": {
     "@hono/hono": "jsr:@hono/hono@^4.6.7",
     "@std/media-types": "jsr:@std/media-types@^1.1.0",
@@ -18,7 +18,7 @@
   "compilerOptions": {
     "lib": ["ESNext", "DOM", "DOM.Iterable", "deno.ns"]
   },
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "example"],
   "lock": false,
   "nodeModulesDir": "auto"
 }
