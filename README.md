@@ -43,7 +43,7 @@ We would recommend checking out the [Sapling Examples Repository](https://github
 
 ## Attributions
 
-- [Hono](https://github.com/honojs/hono) - We use Hono's amazing HTML helpers for escaping HTML templates. We're also huge fans of their routing approach which is why we've borrowed some of their ideas for Sapling.
+- [Hono](https://github.com/honojs/hono) - Our html and raw HTML helpers are based on Hono's to allow for easy migration between Sapling and Hono. We are also huge fans of their routing approach which is why we've structured Sapling's API in a similar way.
 - [UnoCSS](https://github.com/unocss/unocss) - We use UnoCSS for atomic CSS.
 - [micromark](https://github.com/micromark/micromark) - Our markdown parser.
 - [shiki](https://github.com/shikijs/shiki) - The code highlighter for syntax highlighting.

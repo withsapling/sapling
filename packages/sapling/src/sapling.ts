@@ -85,6 +85,16 @@ export interface Context {
      * ```
      */
     formData(): Promise<FormData>;
+    /**
+     * Get request body as text
+     * @returns Promise resolving to the request body as text
+     * @example
+     * ```ts
+     * const body = await c.req.text();
+     * console.log('Request body:', body);
+     * ```
+     */
+    text(): Promise<string>;
   };
   /** Response headers for the request */
   res: {
@@ -143,7 +153,7 @@ export interface Context {
    * });
    * ```
    */
-  html(content: string): Response;
+  html(content: string | ReadableStream): Response;
 
   /**
    * Send text response
@@ -233,6 +243,20 @@ type Route = {
  *     return new Response("Hello World!");
  *   }
  * );
+ * 
+ * // Prerender a static route
+ * site.prerender("/about", (c) => {
+ *   return c.html("<h1>About Us</h1>");
+ * });
+ * 
+ * // Prerender dynamic routes with parameters
+ * site.prerender("/blog/:slug", async (c) => {
+ *   const post = await getPost(c.req.param("slug"));
+ *   return c.html(`<h1>${post.title}</h1>${post.content}`);
+ * }, [
+ *   { slug: "first-post" },
+ *   { slug: "second-post" }
+ * ]);
  * ```
  */
 export class Sapling {
@@ -240,8 +264,17 @@ export class Sapling {
   private middleware: Middleware[] = [];
   private notFoundHandler: ContextHandler = () =>
     new Response("Not found", { status: 404 });
+  private prerenderRoutes: { path: string; handler: ContextHandler; params?: Record<string, string>[] }[] = [];
+  private dev: boolean;
+  private hasWarnedPrerender: boolean = false;
 
-  constructor() {
+  /**
+   * Create a new Sapling instance
+   * @param options - Configuration options
+   * @param options.dev - Enable development mode (default: false)
+   */
+  constructor(options: { dev?: boolean } = {}) {
+    this.dev = options.dev ?? false;
     ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
       this.routes.set(method, []);
     });
@@ -373,9 +406,14 @@ export class Sapling {
    */
   fetch = async (req: Request): Promise<Response> => {
     const response = await this.handle(req);
-    const context = this.createContext(req, {});
-    const notFoundResponse = await this.notFoundHandler(context);
-    return response ?? notFoundResponse ?? new Response("Not found", { status: 404 });
+
+    // If the response is null, we need to handle the 404 error
+    if (response === null) {
+      const context = this.createContext(req, {});
+      const notFoundResponse = await this.notFoundHandler(context);
+      return notFoundResponse ?? new Response("Not found", { status: 404 });
+    }
+    return response;
   };
 
   /**
@@ -399,6 +437,7 @@ export class Sapling {
         header: (name: string) => req.headers.get(name) ?? undefined,
         json: async <T = unknown>() => await req.clone().json() as T,
         formData: async () => await req.clone().formData(),
+        text: async () => await req.clone().text(),
       },
       res: {
         headers: new Headers(),
@@ -411,12 +450,18 @@ export class Sapling {
       get: <T>(key: string): T | undefined => {
         return ctx.state[key] as T | undefined;
       },
-      html: (content: string) => new Response(content, {
-        headers: {
+      html: (content: string | ReadableStream) => {
+        const headers = {
           "content-type": "text/html; charset=UTF-8",
-          ...Object.fromEntries(ctx.res.headers)
+          ...Object.fromEntries(ctx.res.headers),
+        };
+
+        if (typeof content === "string") {
+          return new Response(content, { headers });
+        } else {
+          return new Response(content, { headers });
         }
-      }),
+      },
       json: (data: unknown, status?: number) => new Response(JSON.stringify(data), {
         status,
         headers: {
@@ -436,6 +481,10 @@ export class Sapling {
         headers: { Location: location }
       })
     };
+
+    // Add dev mode to context state
+    ctx.state.dev = this.dev;
+
     return ctx;
   }
 
@@ -482,5 +531,60 @@ export class Sapling {
     }
 
     return null;
+  }
+
+  /**
+   * Register a route for pre-rendering with optional parameters
+   * @param path - The path to pre-render (can include dynamic segments like /:slug)
+   * @param handler - The route handler function
+   * @param params - Optional array of parameter objects to generate multiple pages
+   * @example
+   * ```ts
+   * // Prerender a static route
+   * site.prerender("/about", (c) => {
+   *   return c.html("<h1>About Us</h1>");
+   * });
+   * 
+   * // Prerender dynamic routes with parameters
+   * site.prerender("/blog/:slug", async (c) => {
+   *   const post = await getPost(c.req.param("slug"));
+   *   return c.html(`<h1>${post.title}</h1>${post.content}`);
+   * }, [
+   *   { slug: "first-post" },
+   *   { slug: "second-post" }
+   * ]);
+   * ```
+   */
+  prerender(path: string, handler: ContextHandler, params?: Record<string, string>[]): Sapling {
+    this.prerenderRoutes.push({ path, handler, params });
+
+    // In development mode, also register as a GET route for dynamic rendering
+    if (this.dev) {
+      this.get(path, handler);
+      // Warn if prerender routes are detected in development mode
+      if (!this.hasWarnedPrerender) {
+        console.warn(`\nPrerender routes detected!\nRemember to generate prerendered pages and add them to your static files to serve them in production.`);
+        this.hasWarnedPrerender = true;
+      }
+    }
+
+    return this;
+  }
+
+  /**
+   * Generate pre-rendered HTML files for registered routes
+   * @param outputDir - The directory to output the HTML files
+   * @example
+   * ```ts
+   * // Generate pre-rendered pages in the dist directory
+   * await site.generatePrerenderedPages("dist");
+   * ```
+   */
+  async generatePrerenderedPages(outputDir: string): Promise<void> {
+    const { generatePrerenderedPages } = await import("./prerender/index.ts");
+    await generatePrerenderedPages(this.prerenderRoutes, {
+      outputDir,
+      createContext: this.createContext.bind(this)
+    });
   }
 }
