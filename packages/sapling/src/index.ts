@@ -2,8 +2,7 @@ import { Sapling } from "./sapling.ts";
 import { Layout } from "./sapling-layout.ts";
 import { serveStatic } from "./serve-static/index.ts";
 
-// export html and raw helpers from hono
-export { html, raw } from "@hono/hono/html";
+export { html, raw } from "./html/index.ts";
 
 // export Sapling class
 export { Sapling };
