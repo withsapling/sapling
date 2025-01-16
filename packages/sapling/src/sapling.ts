@@ -563,7 +563,7 @@ export class Sapling {
       this.get(path, handler);
       // Warn if prerender routes are detected in development mode
       if (!this.hasWarnedPrerender) {
-        console.warn(`Prerender routes detected!\nRemember to generate prerendered pages and add them to your static files to serve them in production.`);
+        console.warn(`\nPrerender routes detected!\nRemember to generate prerendered pages and add them to your static files to serve them in production.`);
         this.hasWarnedPrerender = true;
       }
     }

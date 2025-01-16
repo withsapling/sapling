@@ -423,8 +423,11 @@ export const html = (
       }
     }
   }
+  // Add the last string to the buffer
   buffer[0] += strings.at(-1) as string;
 
+  // If the buffer has only one element, it means there were no callbacks
+  // So we can directly return the raw content
   return buffer.length === 1
     ? 'callbacks' in buffer
       ? raw(resolveCallbackSync(raw(buffer[0], buffer.callbacks)))
