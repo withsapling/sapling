@@ -7,8 +7,6 @@ import type { Context } from "../types/index.ts";
 type StaticFileOptions = {
   /** Directory to serve static files from */
   directory: string;
-  /** Development mode disables caching */
-  dev?: boolean;
   /** Optional URL path prefix for static files */
   urlPrefix?: string;
 };
@@ -20,11 +18,33 @@ type FileInfo = {
   stream: fs.FileHandle;
 };
 
+/**
+ * Serves static files with caching support and optional development mode.
+ * @param options - Configuration options for serving static files
+ * @returns Middleware function that handles static file requests
+ * @example
+ * ```ts
+ * // Basic usage
+ * site.get("/static/*", serveStatic({ 
+ *   directory: "./public",
+ *   urlPrefix: "/static"
+ * }));
+ * 
+ * // A file in the public directory would be served at /static/index.html
+ * 
+ * // Serve from root path
+ * site.get("/*", serveStatic({ 
+ *   directory: "./public"
+ * }));
+ * 
+ * // A file in the public directory would be served at /index.html
+ * ```
+ */
 export function serveStatic(options: StaticFileOptions): (c: Context) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
-  const { directory, dev = false, urlPrefix = "" } = options;
+  const { directory, urlPrefix = "" } = options;
 
-  async function getFileInfo(filepath: string): Promise<FileInfo | null> {
+  async function getFileInfo(filepath: string, dev: boolean): Promise<FileInfo | null> {
     try {
       const file = await fs.open(filepath);
       const stat = await fs.stat(filepath);
@@ -99,7 +119,7 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
 
     let file: FileInfo | null = null;
     for (const filepath of possiblePaths) {
-      file = await getFileInfo(filepath);
+      file = await getFileInfo(filepath, c.get("dev") ?? false);
       if (file) break;
     }
 
@@ -114,7 +134,7 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
     });
 
     // Handle caching
-    if (!dev) {
+    if (!c.get("dev")) {
       headers.set("ETag", `W/"${file.hash}"`);
       headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
