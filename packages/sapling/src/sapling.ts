@@ -266,6 +266,7 @@ export class Sapling {
     new Response("Not found", { status: 404 });
   private prerenderRoutes: { path: string; handler: ContextHandler; params?: Record<string, string>[] }[] = [];
   private dev: boolean;
+  private hasWarnedPrerender: boolean = false;
 
   /**
    * Create a new Sapling instance
@@ -560,6 +561,11 @@ export class Sapling {
     // In development mode, also register as a GET route for dynamic rendering
     if (this.dev) {
       this.get(path, handler);
+      // Warn if prerender routes are detected in development mode
+      if (!this.hasWarnedPrerender) {
+        console.warn(`Prerender routes detected!\nRemember to generate prerendered pages and add them to your static files to serve them in production.`);
+        this.hasWarnedPrerender = true;
+      }
     }
 
     return this;
