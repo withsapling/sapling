@@ -36,8 +36,6 @@ export interface ShikiOptions {
  * @interface
  */
 export interface MarkdownOptions {
-  /** Theme configuration for syntax highlighting */
-  themes?: ThemeOptions;
   /** Whether to generate IDs for headings */
   generateHeadingIds?: boolean;
   /** Whether to generate anchor links for headings */
