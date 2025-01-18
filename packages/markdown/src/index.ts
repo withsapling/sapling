@@ -1,6 +1,10 @@
-import { marked } from "marked";
+/**
+ * Markdown rendering with syntax highlighting and GitHub-style features
+ */
+
+import { Marked } from "marked";
 import markedShiki from "marked-shiki";
-import { codeToHtml } from "shiki";
+import { createHighlighter, type BundledTheme } from "shiki";
 import { gfmHeadingId } from "marked-gfm-heading-id";
 
 /** 
@@ -9,13 +13,13 @@ import { gfmHeadingId } from "marked-gfm-heading-id";
  */
 export interface ThemeOptions {
   /** Light theme name */
-  light?: string;
+  light?: BundledTheme;
   /** Dark theme name */
-  dark?: string;
+  dark?: BundledTheme;
   /** Dim theme name */
-  dim?: string;
+  dim?: BundledTheme;
   /** Additional theme variants */
-  [key: string]: string | undefined;
+  [key: string]: BundledTheme | undefined;
 }
 
 /**
@@ -27,8 +31,10 @@ export interface ShikiOptions {
   themes?: ThemeOptions;
   /** Default color mode to use */
   defaultColor?: string;
-  /** Prefix for CSS variables */
+  /** CSS variable prefix */
   cssVariablePrefix?: string;
+  /** Languages to load for syntax highlighting */
+  langs?: string[];
 }
 
 /**
@@ -36,8 +42,6 @@ export interface ShikiOptions {
  * @interface
  */
 export interface MarkdownOptions {
-  /** Whether to generate IDs for headings */
-  generateHeadingIds?: boolean;
   /** Whether to generate anchor links for headings */
   generateAnchors?: boolean;
   /** Prefix to use for heading IDs */
@@ -55,34 +59,68 @@ export interface MarkdownOptions {
  * @param markdown - The markdown string to render
  * @param options - Configuration options for the markdown renderer
  * @returns A promise that resolves to the rendered HTML string
+ * 
+ * @example
+ * ```ts
+ * import { renderMarkdown } from '@sapling/markdown'
+ * 
+ * // Basic usage
+ * const html = await renderMarkdown('# Hello World')
+ * 
+ * // With syntax highlighting options
+ * const html = await renderMarkdown('```js\nconst x = 1;\n```', {
+ *   shiki: {
+ *     themes: {
+ *       light: 'github-light',
+ *       dark: 'github-dark'
+ *     }
+ *   }
+ * })
+ * 
+ * // With GitHub-style heading IDs
+ * const html = await renderMarkdown('## My Heading', {
+ *   idPrefix: 'custom-',
+ *   gfm: true
+ * })
+ * ```
  */
-export function renderMarkdown(
+export async function renderMarkdown(
   markdown: string,
   options: MarkdownOptions = {},
-): string | Promise<string> {
-  // Configure marked options
-  marked.use({
-    gfm: options.gfm ?? true,
-    breaks: options.breaks ?? false,
+): Promise<string> {
+  const defaultTheme = "github-light" as BundledTheme;
+  const themes = options.shiki?.themes || { light: defaultTheme };
+  const themeNames = Object.values(themes).filter((t): t is BundledTheme => t !== undefined);
+
+  const defaultLangs = ['md', 'js', 'ts', 'json', 'html', 'css'];
+  const langs = options.shiki?.langs || defaultLangs;
+
+  const highlighter = await createHighlighter({
+    themes: themeNames.length > 0 ? themeNames : [defaultTheme],
+    langs,
   });
 
-  marked.use(
-    markedShiki({
-      highlight: (code: string, lang: string) =>
-        codeToHtml(code, {
-          lang: lang || "text",
-          themes: options.shiki?.themes || { light: "github-light" },
-          defaultColor: options.shiki?.defaultColor,
-          cssVariablePrefix: options.shiki?.cssVariablePrefix,
-        }),
-    }),
-  );
+  // Configure marked options
+  const renderer = new Marked()
+    .use({
+      gfm: options.gfm ?? true,
+      breaks: options.breaks ?? false,
+    })
+    .use(
+      markedShiki({
+        highlight(code: string, lang: string) {
+          return highlighter.codeToHtml(code, {
+            lang: lang || "text",
+            theme: (options.shiki?.themes?.light || defaultTheme) as BundledTheme,
+          });
+        },
+      }),
+    )
+    .use(
+      gfmHeadingId({
+        prefix: options.idPrefix ?? undefined,
+      }),
+    );
 
-  marked.use(
-    gfmHeadingId({
-      prefix: options.idPrefix ?? undefined,
-    }),
-  );
-
-  return marked(markdown);
+  return renderer.parse(markdown);
 }
