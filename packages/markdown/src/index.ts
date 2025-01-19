@@ -13,8 +13,8 @@ interface MarkdownOptions {
   gfm?: boolean;
   /** Convert \n to <br>. Defaults to false */
   breaks?: boolean;
-  /** Syntax highlighting theme. Defaults to "github-light" */
-  theme?: string;
+  /** Options passed directly to shiki's codeToHtml. Will override defaults (github-light theme and text fallback language) */
+  shikiOptions?: Parameters<typeof codeToHtml>[1];
 }
 
 /**
@@ -27,9 +27,12 @@ interface MarkdownOptions {
  * 
  * // With options
  * const html = await renderMarkdown("# Hello World", {
- *   theme: "dracula",
  *   gfm: true,
- *   idPrefix: "content-"
+ *   idPrefix: "content-",
+ *   shikiOptions: {
+ *     theme: "dracula",
+ *     langs: ["typescript", "javascript"]
+ *   }
  * });
  * ```
  * 
@@ -52,7 +55,8 @@ export async function renderMarkdown(
       async highlight(code: string, lang: string) {
         return await codeToHtml(code, {
           lang: lang || "text",
-          theme: options.theme || "github-light",
+          theme: "github-light",
+          ...options.shikiOptions,
         });
       },
     }),
