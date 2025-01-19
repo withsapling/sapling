@@ -13,7 +13,12 @@ interface MarkdownOptions {
   gfm?: boolean;
   /** Convert \n to <br>. Defaults to false */
   breaks?: boolean;
-  /** Options passed directly to shiki's codeToHtml. Will override defaults (github-light theme and text fallback language) */
+  /** 
+   * Options passed directly to shiki's codeToHtml. Will override defaults.
+   * Default values that will be overridden if specified:
+   * - lang: Falls back to "text" if no language is specified
+   * - themes: { light: "github-light", dark: "github-dark" }
+   */
   shikiOptions?: Parameters<typeof codeToHtml>[1];
 }
 
@@ -30,6 +35,7 @@ interface MarkdownOptions {
  *   gfm: true,
  *   idPrefix: "content-",
  *   shikiOptions: {
+ *     // These will override the default theme and language settings
  *     theme: "dracula",
  *     langs: ["typescript", "javascript"]
  *   }
@@ -54,8 +60,12 @@ export async function renderMarkdown(
     markedShiki({
       async highlight(code: string, lang: string) {
         return await codeToHtml(code, {
+          // Default to text if no language is specified
           lang: lang || "text",
-          theme: "github-light",
+          themes: {
+            light: "github-light",
+            dark: "github-dark"
+          },
           ...options.shikiOptions,
         });
       },
