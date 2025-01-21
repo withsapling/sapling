@@ -14,10 +14,11 @@ interface MarkdownOptions {
   /** Convert \n to <br>. Defaults to false */
   breaks?: boolean;
   /** 
-   * Options passed directly to shiki's codeToHtml. Will override defaults.
-   * Default values that will be overridden if specified:
-   * - lang: Falls back to "text" if no language is specified
-   * - themes: { light: "github-light", dark: "github-dark" }
+   * Options passed directly to shiki's codeToHtml.
+   * Defaults that can be overridden:
+   * - themes: Defaults to { light: "github-light", dark: "github-dark" }
+   * Note: The language (lang) from code blocks will always take precedence over
+   * any language specified in shikiOptions
    */
   shikiOptions?: Parameters<typeof codeToHtml>[1];
 }
@@ -35,11 +36,27 @@ interface MarkdownOptions {
  *   gfm: true,
  *   idPrefix: "content-",
  *   shikiOptions: {
- *     // These will override the default theme and language settings
+ *     // Theme customization
  *     theme: "dracula",
- *     langs: ["typescript", "javascript"]
+ *     // Language handling:
+ *     // 1. Code blocks with explicit language will use that language: ```ts
+ *     // 2. Code blocks with no language will fallback to "text": ```
  *   }
  * });
+ * 
+ * // Language examples
+ * const markdown = `
+ * \`\`\`typescript
+ * // This will use TypeScript highlighting
+ * const x: number = 42;
+ * \`\`\`
+ * 
+ * \`\`\`
+ * // This will fallback to text highlighting
+ * const x = 42;
+ * \`\`\`
+ * `;
+ * const html = await renderMarkdown(markdown);
  * ```
  * 
  * @param markdown - The markdown string to render
@@ -60,13 +77,15 @@ export async function renderMarkdown(
     markedShiki({
       async highlight(code: string, lang: string) {
         return await codeToHtml(code, {
-          // Default to text if no language is specified
-          lang: lang || "text",
+          // Set defaults first
           themes: {
             light: "github-light",
             dark: "github-dark"
           },
+          // Allow shikiOptions to override defaults
           ...options.shikiOptions,
+          // Always ensure code block language takes precedence
+          lang: lang || "text",
         });
       },
     }),
