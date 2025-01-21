@@ -2,7 +2,7 @@
   "name": "@sapling/markdown",
   "description": "A markdown parser for Sapling sites or Deno projects",
   "license": "MIT",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "imports": {
     "marked": "npm:marked@^15.0.6",
     "marked-gfm-heading-id": "npm:marked-gfm-heading-id@^4.1.1",

@@ -1,7 +1,16 @@
 import { marked } from "marked";
 import markedShiki from "marked-shiki";
-import { codeToHtml } from "shiki";
+import { codeToHtml, type BundledLanguage, type BundledTheme, type CodeToHastOptions } from "shiki";
 import { gfmHeadingId } from "marked-gfm-heading-id";
+
+type ThemeOptions =
+  | { theme: BundledTheme; themes?: never }
+  | { theme?: never; themes: { light: BundledTheme; dark: BundledTheme } };
+
+/**
+ * Custom type for Shiki options where lang is optional since we handle it internally
+ */
+type CustomShikiOptions = Omit<CodeToHastOptions<BundledLanguage, BundledTheme>, 'lang' | 'theme' | 'themes'> & ThemeOptions;
 
 /**
  * Options for markdown rendering
@@ -15,12 +24,11 @@ interface MarkdownOptions {
   breaks?: boolean;
   /** 
    * Options passed directly to shiki's codeToHtml.
-   * Defaults that can be overridden:
-   * - themes: Defaults to { light: "github-light", dark: "github-dark" }
-   * Note: The language (lang) from code blocks will always take precedence over
-   * any language specified in shikiOptions
+   * The language (lang) from code blocks will always take precedence over
+   * any language specified in shikiOptions.
+   * You must provide a theme or themes configuration.
    */
-  shikiOptions?: Parameters<typeof codeToHtml>[1];
+  shikiOptions?: CustomShikiOptions;
 }
 
 /**
@@ -28,19 +36,22 @@ interface MarkdownOptions {
  * 
  * @example
  * ```ts
- * // Basic usage
- * const html = await renderMarkdown("# Hello World");
+ * // Basic usage with a single theme
+ * const html = await renderMarkdown("# Hello World", {
+ *   shikiOptions: {
+ *     theme: "github-light"
+ *   }
+ * });
  * 
- * // With options
+ * // With dark/light theme support
  * const html = await renderMarkdown("# Hello World", {
  *   gfm: true,
  *   idPrefix: "content-",
  *   shikiOptions: {
- *     // Theme customization
- *     theme: "dracula",
- *     // Language handling:
- *     // 1. Code blocks with explicit language will use that language: ```ts
- *     // 2. Code blocks with no language will fallback to "text": ```
+ *     themes: {
+ *       light: "github-light",
+ *       dark: "github-dark"
+ *     }
  *   }
  * });
  * 
@@ -56,7 +67,9 @@ interface MarkdownOptions {
  * const x = 42;
  * \`\`\`
  * `;
- * const html = await renderMarkdown(markdown);
+ * const html = await renderMarkdown(markdown, {
+ *   shikiOptions: { theme: "github-light" }
+ * });
  * ```
  * 
  * @param markdown - The markdown string to render
@@ -76,13 +89,10 @@ export async function renderMarkdown(
   await marked.use(
     markedShiki({
       async highlight(code: string, lang: string) {
+        if (!options.shikiOptions?.theme && !options.shikiOptions?.themes) {
+          throw new Error('You must provide either a theme or themes in shikiOptions');
+        }
         return await codeToHtml(code, {
-          // Set defaults first
-          themes: {
-            light: "github-light",
-            dark: "github-dark"
-          },
-          // Allow shikiOptions to override defaults
           ...options.shikiOptions,
           // Always ensure code block language takes precedence
           lang: lang || "text",
