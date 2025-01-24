@@ -40,8 +40,12 @@ export async function generatePrerenderedPages(
     });
   });
 
-  // Get optimal concurrency based on CPU cores
-  const concurrencyLimit = os.cpus().length || 4;
+  // Smart concurrency based on page count
+  const concurrencyLimit = Math.min(
+    Math.max(2, Math.ceil(pages.length / 4)),
+    os.cpus().length || 4
+  );
+
   console.log(
     `\nPrerendering ${pages.length} pages with ${concurrencyLimit} workers...`
   );
