@@ -4,6 +4,8 @@ if (!globalThis.URLPattern) {
   await import("urlpattern-polyfill");
 }
 
+import { serveStatic } from "./serve-static/index.ts";
+
 /**
  * Context object passed to route handlers
  * @example
@@ -273,14 +275,17 @@ export class Sapling {
   }[] = [];
   private dev: boolean;
   private hasWarnedPrerender: boolean = false;
+  private buildDir: string;
 
   /**
    * Create a new Sapling instance
    * @param options - Configuration options
    * @param options.dev - Enable development mode (default: false)
+   * @param options.buildDir - Directory where prerendered pages are built (default: "./dist")
    */
-  constructor(options: { dev?: boolean } = {}) {
+  constructor(options: { dev?: boolean; buildDir?: string } = {}) {
     this.dev = options.dev ?? false;
+    this.buildDir = options.buildDir ?? "./dist";
     ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
       this.routes.set(method, []);
     });
@@ -578,16 +583,25 @@ export class Sapling {
   ): Sapling {
     this.prerenderRoutes.push({ path, handler, params });
 
-    // In development mode, also register as a GET route for dynamic rendering
     if (this.dev) {
+      // In development mode, register as a dynamic route
       this.get(path, handler);
       // Warn if prerender routes are detected in development mode
       if (!this.hasWarnedPrerender) {
         console.warn(
-          `\nPrerender routes detected!\nRemember to generate prerendered pages and add them to your static files to serve them in production.`
+          `\nPrerender routes detected!\nRemember to run site.generatePrerenderedPages("${this.buildDir}") to generate the static files for production.`
         );
         this.hasWarnedPrerender = true;
       }
+    } else {
+      // In production, serve the prerendered files from buildDir
+      this.get(
+        path,
+        serveStatic({
+          directory: this.buildDir,
+          urlPrefix: "",
+        })
+      );
     }
 
     return this;
