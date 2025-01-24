@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
+import * as os from "node:os";
 import type { PrerenderRoute, PrerenderOptions } from "./index.ts";
 
 type NodeError = {
@@ -26,52 +27,78 @@ export async function generatePrerenderedPages(
     }
   }
 
-  for (const route of routes) {
+  // Create a flat list of all pages to render
+  const pages = routes.flatMap((route) => {
     const params = route.params || [{}];
-
-    for (const param of params) {
+    return params.map((param) => {
       let requestPath = route.path;
       // Replace dynamic segments with parameter values
       for (const [key, value] of Object.entries(param)) {
         requestPath = requestPath.replace(`:${key}`, value.toString());
       }
+      return { route, param, requestPath };
+    });
+  });
 
-      // Create context with path and params
-      const context = createContext(requestPath, param);
+  // Get optimal concurrency based on CPU cores
+  const concurrencyLimit = os.cpus().length || 4;
+  console.log(
+    `\nPrerendering ${pages.length} pages with ${concurrencyLimit} workers...`
+  );
+  const startTime = Date.now();
+  let completed = 0;
 
-      try {
-        const response = await route.handler(context);
-
-        if (response instanceof Response && response.ok) {
-          const html = await response.text();
-
-          // Create nested directories if needed
-          const filePath =
-            requestPath === "/"
-              ? path.join(outputDir, "index.html")
-              : path.join(
-                  outputDir,
-                  `${
-                    requestPath.endsWith("/")
-                      ? requestPath.slice(0, -1)
-                      : requestPath
-                  }.html`
-                );
-
-          const fileDir = path.dirname(filePath);
-          await fs.mkdir(fileDir, { recursive: true });
-
-          // Write the HTML file
-          await fs.writeFile(filePath, html);
-          console.log(`Pre-rendered page: ${filePath}`);
-        } else {
-          console.error(
-            `Error pre-rendering page: ${requestPath} - Response not OK`
-          );
-        }
-      } catch (error) {
-        console.error(`Error pre-rendering page: ${requestPath}`, error);
-      }
-    }
+  // Process pages in parallel with a concurrency limit
+  const chunks = [];
+  for (let i = 0; i < pages.length; i += concurrencyLimit) {
+    chunks.push(pages.slice(i, i + concurrencyLimit));
   }
+
+  for (const chunk of chunks) {
+    await Promise.all(
+      chunk.map(async ({ route, param, requestPath }) => {
+        // Create context with path and params
+        const context = createContext(requestPath, param);
+
+        try {
+          const response = await route.handler(context);
+
+          if (response instanceof Response && response.ok) {
+            const html = await response.text();
+
+            // Create nested directories if needed
+            const filePath =
+              requestPath === "/"
+                ? path.join(outputDir, "index.html")
+                : path.join(
+                    outputDir,
+                    `${
+                      requestPath.endsWith("/")
+                        ? requestPath.slice(0, -1)
+                        : requestPath
+                    }.html`
+                  );
+
+            const fileDir = path.dirname(filePath);
+            await fs.mkdir(fileDir, { recursive: true });
+
+            // Write the HTML file
+            await fs.writeFile(filePath, html);
+            completed++;
+            const percent = Math.round((completed / pages.length) * 100);
+            console.log(`[${percent}%] Pre-rendered: ${filePath}`);
+          } else {
+            console.error(
+              `Error pre-rendering page: ${requestPath} - Response not OK`
+            );
+          }
+        } catch (error) {
+          console.error(`Error pre-rendering page: ${requestPath}`, error);
+        }
+      })
+    );
+  }
+
+  const duration = Date.now() - startTime;
+  console.log(`\nPrerendered ${completed} pages in ${duration}ms`);
 }
