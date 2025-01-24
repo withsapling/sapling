@@ -11,17 +11,22 @@ type PrerenderOptions = {
   /** Directory to output the pre-rendered files */
   outputDir: string;
   /** Function to create a context object */
-  createContext: (req: Request, params: Record<string, string>) => Context;
+  createContext: (path: string, params: Record<string, string>) => Context;
 };
 
-let generatePrerenderedPages: (routes: PrerenderRoute[], options: PrerenderOptions) => Promise<void>;
+let generatePrerenderedPages: (
+  routes: PrerenderRoute[],
+  options: PrerenderOptions
+) => Promise<void>;
 
 // Check if we're running in Deno
 if (typeof Deno !== "undefined") {
-  generatePrerenderedPages = (await import("./deno.ts")).generatePrerenderedPages;
+  generatePrerenderedPages = (await import("./deno.ts"))
+    .generatePrerenderedPages;
 } else {
-  generatePrerenderedPages = (await import("./node.ts")).generatePrerenderedPages;
+  generatePrerenderedPages = (await import("./node.ts"))
+    .generatePrerenderedPages;
 }
 
 export { generatePrerenderedPages };
-export type { PrerenderRoute, PrerenderOptions }; 
+export type { PrerenderRoute, PrerenderOptions };

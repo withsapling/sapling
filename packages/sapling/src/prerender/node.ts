@@ -10,7 +10,10 @@ type NodeError = {
 /**
  * Generate pre-rendered HTML files for registered routes using Node.js file system APIs
  */
-export async function generatePrerenderedPages(routes: PrerenderRoute[], options: PrerenderOptions): Promise<void> {
+export async function generatePrerenderedPages(
+  routes: PrerenderRoute[],
+  options: PrerenderOptions
+): Promise<void> {
   const { outputDir, createContext } = options;
 
   // Create output directory if it doesn't exist
@@ -18,7 +21,7 @@ export async function generatePrerenderedPages(routes: PrerenderRoute[], options
     await fs.mkdir(outputDir, { recursive: true });
   } catch (error) {
     const nodeError = error as NodeError;
-    if (nodeError?.code !== 'EEXIST') {
+    if (nodeError?.code !== "EEXIST") {
       throw error;
     }
   }
@@ -33,9 +36,8 @@ export async function generatePrerenderedPages(routes: PrerenderRoute[], options
         requestPath = requestPath.replace(`:${key}`, value.toString());
       }
 
-      // Create mock request for the route
-      const mockRequest = new Request(`http://localhost${requestPath}`);
-      const context = createContext(mockRequest, param);
+      // Create context with path and params
+      const context = createContext(requestPath, param);
 
       try {
         const response = await route.handler(context);
@@ -44,9 +46,17 @@ export async function generatePrerenderedPages(routes: PrerenderRoute[], options
           const html = await response.text();
 
           // Create nested directories if needed
-          const filePath = requestPath === "/"
-            ? path.join(outputDir, "index.html")
-            : path.join(outputDir, `${requestPath.endsWith("/") ? requestPath.slice(0, -1) : requestPath}.html`);
+          const filePath =
+            requestPath === "/"
+              ? path.join(outputDir, "index.html")
+              : path.join(
+                  outputDir,
+                  `${
+                    requestPath.endsWith("/")
+                      ? requestPath.slice(0, -1)
+                      : requestPath
+                  }.html`
+                );
 
           const fileDir = path.dirname(filePath);
           await fs.mkdir(fileDir, { recursive: true });
@@ -55,11 +65,13 @@ export async function generatePrerenderedPages(routes: PrerenderRoute[], options
           await fs.writeFile(filePath, html);
           console.log(`Pre-rendered page: ${filePath}`);
         } else {
-          console.error(`Error pre-rendering page: ${requestPath} - Response not OK`);
+          console.error(
+            `Error pre-rendering page: ${requestPath} - Response not OK`
+          );
         }
       } catch (error) {
         console.error(`Error pre-rendering page: ${requestPath}`, error);
       }
     }
   }
-} 
+}
