@@ -48,6 +48,19 @@ export interface Context {
      */
     param(): Record<string, string>;
     param(name: string): string;
+    /**
+     * Get URL query parameters
+     * @example
+     * ```ts
+     * // Get single query parameter
+     * const q = c.req.query('q')
+     *
+     * // Get all query parameters
+     * const { q, limit, offset } = c.req.query()
+     * ```
+     */
+    query(): Record<string, string>;
+    query(name: string): string;
     method: string;
     url: string;
     headers: Headers;
@@ -128,8 +141,9 @@ export interface Context {
   get<T>(key: string): T | undefined;
 
   /**
-   * Get URL query parameters
+   * Get URL query parameters (deprecated, use c.req.query() instead)
    * @returns URLSearchParams object containing query parameters
+   * @deprecated Use c.req.query() instead
    */
   query(): URLSearchParams;
 
@@ -437,11 +451,22 @@ export class Sapling {
    * @param params - URL parameters
    */
   private createContext(req: Request, params: Record<string, string>): Context {
+    const url = new URL(req.url);
+    const searchParams = url.searchParams;
+    const queryParams = Object.fromEntries(searchParams.entries());
+
     const ctx = {
       req: {
         param: ((name?: string) => {
           if (name === undefined) return params;
           return params[name] || "";
+        }) as {
+          (): Record<string, string>;
+          (name: string): string;
+        },
+        query: ((name?: string) => {
+          if (name === undefined) return queryParams;
+          return searchParams.get(name) || "";
         }) as {
           (): Record<string, string>;
           (name: string): string;
@@ -458,7 +483,7 @@ export class Sapling {
         headers: new Headers(),
       },
       state: {} as Record<string, unknown>,
-      query: () => new URL(req.url).searchParams,
+      query: () => searchParams,
       set: <T>(key: string, value: T) => {
         ctx.state[key] = value;
       },
@@ -631,6 +656,10 @@ export class Sapling {
               if (name === undefined) return params;
               return params[name] || "";
             }) as {
+              (): Record<string, string>;
+              (name: string): string;
+            },
+            query: (() => ({})) as {
               (): Record<string, string>;
               (name: string): string;
             },
