@@ -561,7 +561,7 @@ export class Sapling {
         let index = 0;
         const allMiddleware = [...this.middleware, ...route.middleware];
 
-        const executeMiddleware = async (): Promise<Response | null> => {
+        const executeMiddleware: Next = async () => {
           if (index < allMiddleware.length) {
             const middleware = allMiddleware[index++];
             return await middleware(context, executeMiddleware);
@@ -606,6 +606,7 @@ export class Sapling {
     handler: ContextHandler,
     params?: Record<string, string>[]
   ): Sapling {
+    // Store the route for later prerendering during build
     this.prerenderRoutes.push({ path, handler, params });
 
     if (this.dev) {
@@ -619,16 +620,42 @@ export class Sapling {
         this.hasWarnedPrerender = true;
       }
     } else {
-      // In production, serve the prerendered files from buildDir
-      this.get(
-        path,
-        serveStatic({
-          directory: this.buildDir,
-          urlPrefix: "",
-          // Override cache control for prerendered pages
-          cacheControl: "public,max-age=0,must-revalidate",
-        })
-      );
+      // In production, we statically serve prerendered files but still want middleware support
+      // First, create the static file handler that will serve the prerendered content
+      const staticHandler = serveStatic({
+        directory: this.buildDir,
+        urlPrefix: "",
+        // Override cache control for prerendered pages to ensure fresh content
+        cacheControl: "public,max-age=0,must-revalidate",
+      });
+
+      // Create a handler that combines global middleware with static file serving
+      // This ensures middleware runs before serving the prerendered content
+      const combinedHandler: ContextHandler = async (c) => {
+        // Set up the middleware execution chain
+        let index = 0;
+        // Only include global middleware since route-specific middleware isn't relevant for prerendered content
+        const allMiddleware = [...this.middleware];
+
+        // Create a recursive function to execute middleware in sequence
+        const executeMiddleware: Next = async () => {
+          if (index < allMiddleware.length) {
+            // Execute the next middleware in the chain
+            // Pass executeMiddleware as the 'next' function to allow middleware to control the flow
+            const middleware = allMiddleware[index++];
+            return await middleware(c, executeMiddleware);
+          } else {
+            // Once all middleware has executed, serve the static file
+            return await staticHandler(c);
+          }
+        };
+
+        // Start the middleware chain execution
+        return await executeMiddleware();
+      };
+
+      // Register the combined handler as a GET route
+      this.get(path, combinedHandler);
     }
 
     return this;
