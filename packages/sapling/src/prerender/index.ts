@@ -4,7 +4,6 @@ import type { ContextHandler } from "../sapling.ts";
 type PrerenderRoute = {
   path: string;
   handler: ContextHandler;
-  /** Dynamic parameters for generating multiple pages */
   params?: Record<string, string>[];
 };
 

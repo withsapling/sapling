@@ -7,6 +7,8 @@ type StaticFileOptions = {
   directory: string;
   /** Optional URL path prefix for static files */
   urlPrefix?: string;
+  /** Optional cache control header value. If not provided, defaults to aggressive caching in production */
+  cacheControl?: string;
 };
 
 type FileInfo = {
@@ -24,26 +26,31 @@ type FileInfo = {
  * @example
  * ```ts
  * // Basic usage
- * site.get("/static/*", serveStatic({ 
+ * site.get("/static/*", serveStatic({
  *   directory: "./public",
  *   urlPrefix: "/static"
  * }));
- * 
+ *
  * // A file in the public directory would be served at /static/index.html
- * 
+ *
  * // Serve from root path
- * site.get("/*", serveStatic({ 
+ * site.get("/*", serveStatic({
  *   directory: "./public"
  * }));
- * 
+ *
  * // A file in the public directory would be served at /index.html
  * ```
  */
-export function serveStatic(options: StaticFileOptions): (c: Context) => Promise<Response | null> {
+export function serveStatic(
+  options: StaticFileOptions
+): (c: Context) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
-  const { directory, urlPrefix = "" } = options;
+  const { directory, urlPrefix = "", cacheControl } = options;
 
-  async function getFileInfo(filepath: string, dev: boolean): Promise<FileInfo | null> {
+  async function getFileInfo(
+    filepath: string,
+    dev: boolean
+  ): Promise<FileInfo | null> {
     try {
       const file = await Deno.open(filepath);
       const stat = await Deno.stat(filepath);
@@ -65,10 +72,15 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
       // Calculate hash for ETag
       const hash = await crypto.subtle.digest(
         "SHA-1",
-        new Uint8Array(await file.readable.getReader().read().then(r => r.value || new Uint8Array()))
+        new Uint8Array(
+          await file.readable
+            .getReader()
+            .read()
+            .then((r) => r.value || new Uint8Array())
+        )
       );
       const hashHex = Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, "0"))
+        .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 
       // Cache the hash in production
@@ -123,7 +135,7 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
     const possiblePaths = [
       path.join(directory, normalizedPath),
       path.join(directory, normalizedPath + ".html"),
-      path.join(directory, normalizedPath, "index.html")
+      path.join(directory, normalizedPath, "index.html"),
     ];
 
     let file: FileInfo | null = null;
@@ -138,14 +150,18 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
     }
 
     const headers = new Headers({
-      "Content-Type": getContentType(path.extname(file.path)) || "application/octet-stream",
+      "Content-Type":
+        getContentType(path.extname(file.path)) || "application/octet-stream",
       "Content-Length": String(file.size),
     });
 
     // Handle caching
     if (!c.get("dev")) {
       headers.set("ETag", `W/"${file.hash}"`);
-      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      headers.set(
+        "Cache-Control",
+        cacheControl || "public, max-age=31536000, immutable"
+      );
 
       const ifNoneMatch = c.req.headers.get("If-None-Match");
       if (ifNoneMatch === `W/"${file.hash}"`) {

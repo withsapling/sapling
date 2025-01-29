@@ -4,7 +4,7 @@ if (!globalThis.URLPattern) {
   await import("urlpattern-polyfill");
 }
 
-import * as path from "@std/path";
+import { serveStatic } from "./serve-static/index.ts";
 
 /**
  * Context object passed to route handlers
@@ -222,41 +222,6 @@ type Route = {
   handler: ContextHandler;
   middleware: Middleware[];
 };
-
-/** Options for prerendered routes */
-type PrerenderOptions = {
-  /** Dynamic parameters for generating multiple pages */
-  params?: Record<string, string>[];
-};
-
-/**
- * Serves a prerendered HTML file with appropriate cache headers
- */
-async function servePrerenderedFile(
-  buildDir: string,
-  pathname: string
-): Promise<Response | null> {
-  try {
-    const filePath =
-      pathname === "/"
-        ? path.join(buildDir, "index.html")
-        : path.join(
-            buildDir,
-            `${pathname.endsWith("/") ? pathname.slice(0, -1) : pathname}.html`
-          );
-
-    const file = await Deno.readTextFile(filePath);
-
-    return new Response(file, {
-      headers: {
-        "Content-Type": "text/html; charset=UTF-8",
-        "Cache-Control": "public,max-age=0,must-revalidate",
-      },
-    });
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Sapling class for handling HTTP requests
@@ -615,39 +580,33 @@ export class Sapling {
   }
 
   /**
-   * Register a route for pre-rendering
+   * Register a route for pre-rendering with optional parameters
    * @param path - The path to pre-render (can include dynamic segments like /:slug)
    * @param handler - The route handler function
-   * @param options - Optional configuration for the prerendered route
+   * @param params - Optional array of parameter objects to generate multiple pages
    * @example
    * ```ts
-   * // Basic prerendered route
+   * // Prerender a static route
    * site.prerender("/about", (c) => {
    *   return c.html("<h1>About Us</h1>");
    * });
    *
-   * // With dynamic parameters
+   * // Prerender dynamic routes with parameters
    * site.prerender("/blog/:slug", async (c) => {
    *   const post = await getPost(c.req.param("slug"));
    *   return c.html(`<h1>${post.title}</h1>${post.content}`);
-   * }, {
-   *   params: [
-   *     { slug: "first-post" },
-   *     { slug: "second-post" }
-   *   ]
-   * });
+   * }, [
+   *   { slug: "first-post" },
+   *   { slug: "second-post" }
+   * ]);
    * ```
    */
   prerender(
     path: string,
     handler: ContextHandler,
-    options: PrerenderOptions = {}
+    params?: Record<string, string>[]
   ): Sapling {
-    this.prerenderRoutes.push({
-      path,
-      handler,
-      params: options.params,
-    });
+    this.prerenderRoutes.push({ path, handler, params });
 
     if (this.dev) {
       // In development mode, register as a dynamic route
@@ -661,10 +620,15 @@ export class Sapling {
       }
     } else {
       // In production, serve the prerendered files from buildDir
-      this.get(path, async (c: Context) => {
-        const url = new URL(c.req.url);
-        return await servePrerenderedFile(this.buildDir, url.pathname);
-      });
+      this.get(
+        path,
+        serveStatic({
+          directory: this.buildDir,
+          urlPrefix: "",
+          // Override cache control for prerendered pages
+          cacheControl: "public,max-age=0,must-revalidate",
+        })
+      );
     }
 
     return this;
