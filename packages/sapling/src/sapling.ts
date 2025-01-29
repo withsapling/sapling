@@ -225,8 +225,6 @@ type Route = {
 
 /** Options for prerendered routes */
 type PrerenderOptions = {
-  /** Additional headers to add to prerendered files */
-  headers?: Record<string, string>;
   /** Dynamic parameters for generating multiple pages */
   params?: Record<string, string>[];
 };
@@ -236,8 +234,7 @@ type PrerenderOptions = {
  */
 async function servePrerenderedFile(
   buildDir: string,
-  pathname: string,
-  customHeaders: Record<string, string> = {}
+  pathname: string
 ): Promise<Response | null> {
   try {
     const filePath =
@@ -254,7 +251,6 @@ async function servePrerenderedFile(
       headers: {
         "Content-Type": "text/html; charset=UTF-8",
         "Cache-Control": "public,max-age=0,must-revalidate",
-        ...customHeaders,
       },
     });
   } catch {
@@ -630,16 +626,6 @@ export class Sapling {
    *   return c.html("<h1>About Us</h1>");
    * });
    *
-   * // With custom headers
-   * site.prerender("/about", (c) => {
-   *   return c.html("<h1>About Us</h1>");
-   * }, {
-   *   headers: {
-   *     "X-Custom-Header": "value",
-   *     "Cache-Control": "public, max-age=3600"
-   *   }
-   * });
-   *
    * // With dynamic parameters
    * site.prerender("/blog/:slug", async (c) => {
    *   const post = await getPost(c.req.param("slug"));
@@ -657,7 +643,11 @@ export class Sapling {
     handler: ContextHandler,
     options: PrerenderOptions = {}
   ): Sapling {
-    this.prerenderRoutes.push({ path, handler, params: options.params });
+    this.prerenderRoutes.push({
+      path,
+      handler,
+      params: options.params,
+    });
 
     if (this.dev) {
       // In development mode, register as a dynamic route
@@ -673,11 +663,7 @@ export class Sapling {
       // In production, serve the prerendered files from buildDir
       this.get(path, async (c: Context) => {
         const url = new URL(c.req.url);
-        return await servePrerenderedFile(
-          this.buildDir,
-          url.pathname,
-          options.headers
-        );
+        return await servePrerenderedFile(this.buildDir, url.pathname);
       });
     }
 
