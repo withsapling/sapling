@@ -57,7 +57,20 @@ export async function generatePrerenderedPages(
         const context = createContext(requestPath, param);
 
         try {
-          const response = await route.handler(context);
+          // Create middleware chain
+          let index = 0;
+          const allMiddleware = route.middleware;
+
+          const executeMiddleware = async (): Promise<Response | null> => {
+            if (index < allMiddleware.length) {
+              const middleware = allMiddleware[index++];
+              return await middleware(context, executeMiddleware);
+            } else {
+              return await route.handler(context);
+            }
+          };
+
+          const response = await executeMiddleware();
 
           if (response instanceof Response && response.ok) {
             const html = await response.text();
