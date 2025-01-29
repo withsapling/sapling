@@ -582,36 +582,56 @@ export class Sapling {
   /**
    * Register a route for pre-rendering with optional parameters
    * @param path - The path to pre-render (can include dynamic segments like /:slug)
-   * @param handler - The route handler function
-   * @param params - Optional array of parameter objects to generate multiple pages
+   * @param ...handlers - Middleware functions and final handler
    * @example
    * ```ts
-   * // Prerender a static route
+   * // Basic prerender route
    * site.prerender("/about", (c) => {
    *   return c.html("<h1>About Us</h1>");
    * });
    *
-   * // Prerender dynamic routes with parameters
-   * site.prerender("/blog/:slug", async (c) => {
-   *   const post = await getPost(c.req.param("slug"));
-   *   return c.html(`<h1>${post.title}</h1>${post.content}`);
-   * }, [
-   *   { slug: "first-post" },
-   *   { slug: "second-post" }
-   * ]);
+   * // Prerender route with middleware
+   * site.prerender("/dashboard",
+   *   async (c, next) => {
+   *     // Check authentication
+   *     if (!isAuthenticated(c)) {
+   *       return c.redirect('/login');
+   *     }
+   *     return next();
+   *   },
+   *   (c) => {
+   *     return c.html("<h1>Dashboard</h1>");
+   *   }
+   * );
+   *
+   * // Prerender dynamic routes
+   * site.prerender("/blog/:slug",
+   *   async (c, next) => {
+   *     // Add cache headers
+   *     c.res.headers.set('Cache-Control', 'public, max-age=3600');
+   *     return next();
+   *   },
+   *   async (c) => {
+   *     const post = await getPost(c.req.param("slug"));
+   *     return c.html(`<h1>${post.title}</h1>${post.content}`);
+   *   }
+   * );
    * ```
    */
   prerender(
     path: string,
-    handler: ContextHandler,
-    params?: Record<string, string>[]
+    ...handlers: (Middleware | ContextHandler)[]
   ): Sapling {
+    // Last handler is the route handler, everything before is middleware
+    const routeHandler = handlers.pop() as ContextHandler;
+    const routeMiddleware = handlers as Middleware[];
+
     // Store the route for later prerendering during build
-    this.prerenderRoutes.push({ path, handler, params });
+    this.prerenderRoutes.push({ path, handler: routeHandler });
 
     if (this.dev) {
-      // In development mode, register as a dynamic route
-      this.get(path, handler);
+      // In development mode, register as a dynamic route with middleware
+      this.get(path, ...handlers, routeHandler);
       // Warn if prerender routes are detected in development mode
       if (!this.hasWarnedPrerender) {
         console.warn(
@@ -620,7 +640,7 @@ export class Sapling {
         this.hasWarnedPrerender = true;
       }
     } else {
-      // In production, we statically serve prerendered files but still want middleware support
+      // In production, we serve prerendered files but still want middleware support
       // First, create the static file handler that will serve the prerendered content
       const staticHandler = serveStatic({
         directory: this.buildDir,
@@ -629,13 +649,13 @@ export class Sapling {
         cacheControl: "public,max-age=0,must-revalidate",
       });
 
-      // Create a handler that combines global middleware with static file serving
+      // Create a handler that combines global and route-specific middleware with static file serving
       // This ensures middleware runs before serving the prerendered content
       const combinedHandler: ContextHandler = async (c) => {
         // Set up the middleware execution chain
         let index = 0;
-        // Only include global middleware since route-specific middleware isn't relevant for prerendered content
-        const allMiddleware = [...this.middleware];
+        // Include both global and route-specific middleware
+        const allMiddleware = [...this.middleware, ...routeMiddleware];
 
         // Create a recursive function to execute middleware in sequence
         const executeMiddleware: Next = async () => {
