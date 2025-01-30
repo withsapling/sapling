@@ -2,9 +2,9 @@ import * as path from "@std/path";
 import type { PrerenderRoute, PrerenderOptions } from "./index.ts";
 
 /**
- * Generate pre-rendered HTML files for registered routes using Deno's file system APIs
+ * Build pre-rendered HTML files for registered routes using Deno's file system APIs
  */
-export async function generatePrerenderedPages(
+export async function buildPrerenderRoutes(
   routes: PrerenderRoute[],
   options: PrerenderOptions
 ): Promise<void> {

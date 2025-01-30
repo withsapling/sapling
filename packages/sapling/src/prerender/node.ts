@@ -9,9 +9,9 @@ type NodeError = {
 };
 
 /**
- * Generate pre-rendered HTML files for registered routes using Node.js file system APIs
+ * Build pre-rendered HTML files for registered routes using Node.js file system APIs
  */
-export async function generatePrerenderedPages(
+export async function buildPrerenderRoutes(
   routes: PrerenderRoute[],
   options: PrerenderOptions
 ): Promise<void> {

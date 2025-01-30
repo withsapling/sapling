@@ -15,19 +15,17 @@ type PrerenderOptions = {
   createContext: (path: string, params: Record<string, string>) => Context;
 };
 
-let generatePrerenderedPages: (
+let buildPrerenderRoutes: (
   routes: PrerenderRoute[],
   options: PrerenderOptions
 ) => Promise<void>;
 
 // Check if we're running in Deno
 if (typeof Deno !== "undefined") {
-  generatePrerenderedPages = (await import("./deno.ts"))
-    .generatePrerenderedPages;
+  buildPrerenderRoutes = (await import("./deno.ts")).buildPrerenderRoutes;
 } else {
-  generatePrerenderedPages = (await import("./node.ts"))
-    .generatePrerenderedPages;
+  buildPrerenderRoutes = (await import("./node.ts")).buildPrerenderRoutes;
 }
 
-export { generatePrerenderedPages };
+export { buildPrerenderRoutes };
 export type { PrerenderRoute, PrerenderOptions };

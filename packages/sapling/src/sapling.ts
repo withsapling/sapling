@@ -666,7 +666,7 @@ export class Sapling {
       // Warn if prerender routes are detected in development mode
       if (!this.hasWarnedPrerender) {
         console.warn(
-          `\nPrerender routes detected!\nRemember to run site.generatePrerenderedPages("${this.buildDir}") to generate the static files for production.`
+          `\nPrerender routes detected!\nRemember to run site.buildPrerenderRoutes("${this.buildDir}") to generate the static files for production.`
         );
         this.hasWarnedPrerender = true;
       }
@@ -718,12 +718,13 @@ export class Sapling {
    * @example
    * ```ts
    * // Generate pre-rendered pages in the dist directory
-   * await site.generatePrerenderedPages("dist");
+   * await site.buildPrerenderRoutes("dist");
    * ```
    */
-  async generatePrerenderedPages(outputDir: string): Promise<void> {
-    const { generatePrerenderedPages } = await import("./prerender/index.ts");
-    await generatePrerenderedPages(this.prerenderRoutes, {
+  async buildPrerenderRoutes(outputDir: string): Promise<void> {
+    const { buildPrerenderRoutes } = await import("./prerender/index.ts");
+
+    await buildPrerenderRoutes(this.prerenderRoutes, {
       outputDir,
       createContext: (path: string, params: Record<string, string>) => {
         const headers = new Headers();
