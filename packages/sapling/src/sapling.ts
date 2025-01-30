@@ -285,6 +285,7 @@ export class Sapling {
   private prerenderRoutes: {
     path: string;
     handler: ContextHandler;
+    middleware: Middleware[];
     params?: Record<string, string>[];
   }[] = [];
   private dev: boolean;
@@ -582,7 +583,8 @@ export class Sapling {
   /**
    * Register a route for pre-rendering with optional parameters
    * @param path - The path to pre-render (can include dynamic segments like /:slug)
-   * @param ...handlers - Middleware functions and final handler
+   * @param handlers - Array of middleware functions and final handler
+   * @param params - Optional array of parameter objects for dynamic routes
    * @example
    * ```ts
    * // Basic prerender route
@@ -604,7 +606,19 @@ export class Sapling {
    *   }
    * );
    *
-   * // Prerender dynamic routes
+   * // Prerender dynamic routes with params
+   * site.prerender("/blog/:slug",
+   *   async (c) => {
+   *     const post = await getPost(c.req.param("slug"));
+   *     return c.html(`<h1>${post.title}</h1>${post.content}`);
+   *   },
+   *   [
+   *     { slug: "first-post" },
+   *     { slug: "second-post" }
+   *   ]
+   * );
+   *
+   * // Prerender dynamic routes with middleware and params
    * site.prerender("/blog/:slug",
    *   async (c, next) => {
    *     // Add cache headers
@@ -614,24 +628,41 @@ export class Sapling {
    *   async (c) => {
    *     const post = await getPost(c.req.param("slug"));
    *     return c.html(`<h1>${post.title}</h1>${post.content}`);
-   *   }
+   *   },
+   *   [
+   *     { slug: "first-post" },
+   *     { slug: "second-post" }
+   *   ]
    * );
    * ```
    */
   prerender(
     path: string,
-    ...handlers: (Middleware | ContextHandler)[]
+    ...args: Array<Middleware | ContextHandler | Record<string, string>[]>
   ): Sapling {
+    const handlers = [...args];
+
+    // Extract params array if it's the last argument
+    const lastArg = handlers[handlers.length - 1];
+    const params = Array.isArray(lastArg)
+      ? (handlers.pop() as Record<string, string>[])
+      : undefined;
+
     // Last handler is the route handler, everything before is middleware
     const routeHandler = handlers.pop() as ContextHandler;
     const routeMiddleware = handlers as Middleware[];
 
     // Store the route for later prerendering during build
-    this.prerenderRoutes.push({ path, handler: routeHandler });
+    this.prerenderRoutes.push({
+      path,
+      handler: routeHandler,
+      middleware: routeMiddleware,
+      params,
+    });
 
     if (this.dev) {
       // In development mode, register as a dynamic route with middleware
-      this.get(path, ...handlers, routeHandler);
+      this.get(path, ...routeMiddleware, routeHandler);
       // Warn if prerender routes are detected in development mode
       if (!this.hasWarnedPrerender) {
         console.warn(

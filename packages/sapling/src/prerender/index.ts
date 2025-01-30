@@ -1,9 +1,10 @@
 import type { Context } from "../types/index.ts";
-import type { ContextHandler } from "../sapling.ts";
+import type { ContextHandler, Middleware } from "../sapling.ts";
 
 type PrerenderRoute = {
   path: string;
   handler: ContextHandler;
+  middleware: Middleware[];
   params?: Record<string, string>[];
 };
 
