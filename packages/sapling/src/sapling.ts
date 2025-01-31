@@ -291,16 +291,26 @@ export class Sapling {
   private dev: boolean;
   private hasWarnedPrerender: boolean = false;
   private buildDir: string;
+  private prerenderCacheControl: string;
 
   /**
    * Create a new Sapling instance
    * @param options - Configuration options
    * @param options.dev - Enable development mode (default: false)
    * @param options.buildDir - Directory where prerendered pages are built (default: "./dist")
+   * @param options.prerenderCacheControl - Cache-Control header value for prerendered pages (default: "public,max-age=0,must-revalidate")
    */
-  constructor(options: { dev?: boolean; buildDir?: string } = {}) {
+  constructor(
+    options: {
+      dev?: boolean;
+      buildDir?: string;
+      prerenderCacheControl?: string;
+    } = {}
+  ) {
     this.dev = options.dev ?? false;
     this.buildDir = options.buildDir ?? "./dist";
+    this.prerenderCacheControl =
+      options.prerenderCacheControl ?? "public,max-age=0,must-revalidate";
     ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
       this.routes.set(method, []);
     });
@@ -678,7 +688,7 @@ export class Sapling {
       const staticHandler = serveStatic({
         root: this.buildDir,
         // Override cache control for prerendered pages to ensure fresh content
-        cacheControl: "public,max-age=0,must-revalidate",
+        cacheControl: this.prerenderCacheControl,
       });
 
       // Create a handler that combines global and route-specific middleware with static file serving
