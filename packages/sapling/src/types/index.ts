@@ -2,13 +2,21 @@ import type { UserConfig } from "@unocss/core";
 import type { HtmlEscapedString } from "../html/index.ts";
 import type { Context, Middleware, Next } from "../sapling.ts";
 
-export type HtmlContent = string | HtmlEscapedString | Promise<HtmlEscapedString> | TemplateStringsArray;
+export type HtmlContent =
+  | string
+  | HtmlEscapedString
+  | Promise<HtmlEscapedString>
+  | TemplateStringsArray;
 
 export interface LayoutProps {
   /**
    * Pass an optional custom UnoCSS config
    */
   unoConfig?: UserConfig;
+  /**
+   * Whether to disable UnoCSS entirely
+   */
+  disableUnoCSS?: boolean;
   /**
    * Whether to disable the tailwind reset
    */
@@ -33,4 +41,3 @@ export interface LayoutProps {
 
 // export Context, Middleware, Next types
 export type { Context, Middleware, Next };
-
