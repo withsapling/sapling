@@ -1,9 +1,10 @@
 import type { Context } from "../types/index.ts";
-import type { ContextHandler } from "../sapling.ts";
+import type { ContextHandler, Middleware } from "../sapling.ts";
 
 type PrerenderRoute = {
   path: string;
   handler: ContextHandler;
+  middleware: Middleware[];
   params?: Record<string, string>[];
 };
 
@@ -11,17 +12,20 @@ type PrerenderOptions = {
   /** Directory to output the pre-rendered files */
   outputDir: string;
   /** Function to create a context object */
-  createContext: (req: Request, params: Record<string, string>) => Context;
+  createContext: (path: string, params: Record<string, string>) => Context;
 };
 
-let generatePrerenderedPages: (routes: PrerenderRoute[], options: PrerenderOptions) => Promise<void>;
+let buildPrerenderRoutes: (
+  routes: PrerenderRoute[],
+  options: PrerenderOptions
+) => Promise<void>;
 
 // Check if we're running in Deno
 if (typeof Deno !== "undefined") {
-  generatePrerenderedPages = (await import("./deno.ts")).generatePrerenderedPages;
+  buildPrerenderRoutes = (await import("./deno.ts")).buildPrerenderRoutes;
 } else {
-  generatePrerenderedPages = (await import("./node.ts")).generatePrerenderedPages;
+  buildPrerenderRoutes = (await import("./node.ts")).buildPrerenderRoutes;
 }
 
-export { generatePrerenderedPages };
-export type { PrerenderRoute, PrerenderOptions }; 
+export { buildPrerenderRoutes };
+export type { PrerenderRoute, PrerenderOptions };

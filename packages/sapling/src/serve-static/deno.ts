@@ -3,10 +3,14 @@ import { contentType as getContentType } from "@std/media-types/content-type";
 import type { Context } from "../types/index.ts";
 
 type StaticFileOptions = {
-  /** Directory to serve static files from */
-  directory: string;
+  /** Root directory to serve static files from */
+  root?: string;
+  /** Specific file path to serve */
+  path?: string;
   /** Optional URL path prefix for static files */
   urlPrefix?: string;
+  /** Optional cache control header value. If not provided, defaults to aggressive caching in production */
+  cacheControl?: string;
 };
 
 type FileInfo = {
@@ -23,27 +27,32 @@ type FileInfo = {
  * @returns Middleware function that handles static file requests
  * @example
  * ```ts
- * // Basic usage
- * site.get("/static/*", serveStatic({ 
- *   directory: "./public",
+ * // Basic usage - serve directory
+ * site.get("/static/*", serveStatic({
+ *   root: "./public",
  *   urlPrefix: "/static"
  * }));
- * 
- * // A file in the public directory would be served at /static/index.html
- * 
- * // Serve from root path
- * site.get("/*", serveStatic({ 
- *   directory: "./public"
+ *
+ * // Serve single file
+ * site.get("/favicon.ico", serveStatic({
+ *   path: "./favicon.ico"
  * }));
- * 
- * // A file in the public directory would be served at /index.html
  * ```
  */
-export function serveStatic(options: StaticFileOptions): (c: Context) => Promise<Response | null> {
+export function serveStatic(
+  options: StaticFileOptions
+): (c: Context) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
-  const { directory, urlPrefix = "" } = options;
+  const { root, path: specificPath, urlPrefix = "", cacheControl } = options;
 
-  async function getFileInfo(filepath: string, dev: boolean): Promise<FileInfo | null> {
+  if (!root && !specificPath) {
+    throw new Error("Either root or path must be specified");
+  }
+
+  async function getFileInfo(
+    filepath: string,
+    dev: boolean
+  ): Promise<FileInfo | null> {
     try {
       const file = await Deno.open(filepath);
       const stat = await Deno.stat(filepath);
@@ -65,10 +74,15 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
       // Calculate hash for ETag
       const hash = await crypto.subtle.digest(
         "SHA-1",
-        new Uint8Array(await file.readable.getReader().read().then(r => r.value || new Uint8Array()))
+        new Uint8Array(
+          await file.readable
+            .getReader()
+            .read()
+            .then((r) => r.value || new Uint8Array())
+        )
       );
       const hashHex = Array.from(new Uint8Array(hash))
-        .map(b => b.toString(16).padStart(2, "0"))
+        .map((b) => b.toString(16).padStart(2, "0"))
         .join("");
 
       // Cache the hash in production
@@ -102,6 +116,45 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
       return new Response("Method Not Allowed", { status: 405 });
     }
 
+    // If specific path is provided, serve that file directly
+    if (specificPath) {
+      const file = await getFileInfo(specificPath, c.get("dev") ?? false);
+      if (!file) {
+        return null;
+      }
+
+      const headers = new Headers({
+        "Content-Type":
+          getContentType(path.extname(file.path)) || "application/octet-stream",
+        "Content-Length": String(file.size),
+      });
+
+      // Handle caching
+      if (!c.get("dev")) {
+        headers.set("ETag", `W/"${file.hash}"`);
+        headers.set(
+          "Cache-Control",
+          cacheControl || "public, max-age=31536000, immutable"
+        );
+
+        const ifNoneMatch = c.req.headers.get("If-None-Match");
+        if (ifNoneMatch === `W/"${file.hash}"`) {
+          file.close();
+          return new Response(null, { status: 304, headers });
+        }
+      } else {
+        headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      }
+
+      if (c.req.method === "HEAD") {
+        file.close();
+        return new Response(null, { status: 200, headers });
+      }
+
+      return new Response(file.readable, { headers });
+    }
+
+    // Handle serving from root directory
     const url = new URL(c.req.url);
     let pathname = decodeURIComponent(url.pathname);
 
@@ -121,9 +174,9 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
     // 2. Path with .html extension
     // 3. Path/index.html if it's a directory
     const possiblePaths = [
-      path.join(directory, normalizedPath),
-      path.join(directory, normalizedPath + ".html"),
-      path.join(directory, normalizedPath, "index.html")
+      path.join(root!, normalizedPath),
+      path.join(root!, normalizedPath + ".html"),
+      path.join(root!, normalizedPath, "index.html"),
     ];
 
     let file: FileInfo | null = null;
@@ -138,14 +191,18 @@ export function serveStatic(options: StaticFileOptions): (c: Context) => Promise
     }
 
     const headers = new Headers({
-      "Content-Type": getContentType(path.extname(file.path)) || "application/octet-stream",
+      "Content-Type":
+        getContentType(path.extname(file.path)) || "application/octet-stream",
       "Content-Length": String(file.size),
     });
 
     // Handle caching
     if (!c.get("dev")) {
       headers.set("ETag", `W/"${file.hash}"`);
-      headers.set("Cache-Control", "public, max-age=31536000, immutable");
+      headers.set(
+        "Cache-Control",
+        cacheControl || "public, max-age=31536000, immutable"
+      );
 
       const ifNoneMatch = c.req.headers.get("If-None-Match");
       if (ifNoneMatch === `W/"${file.hash}"`) {

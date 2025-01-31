@@ -1,8 +1,10 @@
 // load urlpattern-polyfill if not supported in the run time such as Node.js
-// @ts-ignore: Property 'URLPattern' does not exist 
+// @ts-ignore: Property 'URLPattern' does not exist
 if (!globalThis.URLPattern) {
   await import("urlpattern-polyfill");
 }
+
+import { serveStatic } from "./serve-static/index.ts";
 
 /**
  * Context object passed to route handlers
@@ -11,18 +13,18 @@ if (!globalThis.URLPattern) {
  * site.get("/users/:id", async (c: Context) => {
  *   // Access URL parameters
  *   const userId = c.req.param("id");
- *   
+ *
  *   // Access query parameters
  *   const sort = c.query().get("sort");
- *   
+ *
  *   // Parse JSON body
  *   const body = await c.json<{ name: string }>();
- *   
+ *
  *   // Use shared state
  *   c.state.user = await getUser(userId);
  * });
  * ```
- * 
+ *
  * @example
  * ```ts
  * site.get("/", (c) => {
@@ -39,13 +41,26 @@ export interface Context {
      * ```ts
      * // Get single parameter
      * const id = c.req.param("id");
-     * 
+     *
      * // Get all parameters
      * const { id, commentId } = c.req.param();
      * ```
      */
     param(): Record<string, string>;
     param(name: string): string;
+    /**
+     * Get URL query parameters
+     * @example
+     * ```ts
+     * // Get single query parameter
+     * const q = c.req.query('q')
+     *
+     * // Get all query parameters
+     * const { q, limit, offset } = c.req.query()
+     * ```
+     */
+    query(): Record<string, string>;
+    query(name: string): string;
     method: string;
     url: string;
     headers: Headers;
@@ -126,8 +141,9 @@ export interface Context {
   get<T>(key: string): T | undefined;
 
   /**
-   * Get URL query parameters
+   * Get URL query parameters (deprecated, use c.req.query() instead)
    * @returns URLSearchParams object containing query parameters
+   * @deprecated Use c.req.query() instead
    */
   query(): URLSearchParams;
 
@@ -164,7 +180,7 @@ export interface Context {
    * site.get("/text", (c) => {
    *   return c.text("Hello World");
    * });
-   * 
+   *
    * site.get("/not-found", (c) => {
    *   return c.text("Not Found", 404);
    * });
@@ -181,7 +197,7 @@ export interface Context {
    * site.get("/old-page", (c) => {
    *   return c.redirect("/new-page");
    * });
-   * 
+   *
    * site.get("/permanent-redirect", (c) => {
    *   return c.redirect("/new-location", 301);
    * });
@@ -191,7 +207,9 @@ export interface Context {
 }
 
 /** Handler function type for processing requests */
-export type ContextHandler = (c: Context) => Response | Promise<Response | null> | null;
+export type ContextHandler = (
+  c: Context
+) => Response | Promise<Response | null> | null;
 
 export type Next = () => Promise<Response | null>;
 
@@ -210,31 +228,31 @@ type Route = {
  * @example
  * ```ts
  * const site = new Sapling();
- * 
+ *
  * // Route with parameters
  * site.get("/users/:id", (c) => {
  *   const userId = c.params.id;
  *   return new Response(`User ${userId}`);
  * });
- * 
+ *
  * // Global middleware
  * site.use(async (c, next) => {
  *   console.log("Global middleware");
  *   return await next();
  * });
- * 
+ *
  * // Route with middleware function
  * async function middleware(c: Context, next: () => Promise<Response | null>) {
  *   console.log("Global middleware");
  *   return await next();
  * }
- * 
+ *
  * site.get("/", middleware, (c) => {
  *   return new Response("Hello World!");
  * });
- * 
+ *
  * // Route with specific middleware
- * site.get("/", 
+ * site.get("/",
  *   async (c, next) => {
  *     console.log("Route middleware");
  *     return await next();
@@ -243,12 +261,12 @@ type Route = {
  *     return new Response("Hello World!");
  *   }
  * );
- * 
+ *
  * // Prerender a static route
  * site.prerender("/about", (c) => {
  *   return c.html("<h1>About Us</h1>");
  * });
- * 
+ *
  * // Prerender dynamic routes with parameters
  * site.prerender("/blog/:slug", async (c) => {
  *   const post = await getPost(c.req.param("slug"));
@@ -264,17 +282,35 @@ export class Sapling {
   private middleware: Middleware[] = [];
   private notFoundHandler: ContextHandler = () =>
     new Response("Not found", { status: 404 });
-  private prerenderRoutes: { path: string; handler: ContextHandler; params?: Record<string, string>[] }[] = [];
+  private prerenderRoutes: {
+    path: string;
+    handler: ContextHandler;
+    middleware: Middleware[];
+    params?: Record<string, string>[];
+  }[] = [];
   private dev: boolean;
   private hasWarnedPrerender: boolean = false;
+  private buildDir: string;
+  private prerenderCacheControl: string;
 
   /**
    * Create a new Sapling instance
    * @param options - Configuration options
    * @param options.dev - Enable development mode (default: false)
+   * @param options.buildDir - Directory where prerendered pages are built (default: "./dist")
+   * @param options.prerenderCacheControl - Cache-Control header value for prerendered pages (default: "public,max-age=0,must-revalidate")
    */
-  constructor(options: { dev?: boolean } = {}) {
+  constructor(
+    options: {
+      dev?: boolean;
+      buildDir?: string;
+      prerenderCacheControl?: string;
+    } = {}
+  ) {
     this.dev = options.dev ?? false;
+    this.buildDir = options.buildDir ?? "./dist";
+    this.prerenderCacheControl =
+      options.prerenderCacheControl ?? "public,max-age=0,must-revalidate";
     ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
       this.routes.set(method, []);
     });
@@ -286,10 +322,14 @@ export class Sapling {
    * @param path - URL pattern to match
    * @param handlers - Middleware functions and final handler
    */
-  private add(method: string, path: string, ...handlers: (Middleware | ContextHandler)[]): Sapling {
+  private add(
+    method: string,
+    path: string,
+    ...handlers: (Middleware | ContextHandler)[]
+  ): Sapling {
     const patterns = [
       new URLPattern({ pathname: path }),
-      new URLPattern({ pathname: path.endsWith('/') ? path : path + '/' })
+      new URLPattern({ pathname: path.endsWith("/") ? path : path + "/" }),
     ];
 
     // Last handler is the route handler, everything before is middleware
@@ -297,11 +337,11 @@ export class Sapling {
     const routeMiddleware = handlers as Middleware[];
 
     const routes = this.routes.get(method);
-    patterns.forEach(pattern => {
+    patterns.forEach((pattern) => {
       routes?.push({
         pattern,
         handler: routeHandler,
-        middleware: routeMiddleware
+        middleware: routeMiddleware,
       });
     });
 
@@ -316,7 +356,7 @@ export class Sapling {
    * site.get("/hello", (c) => {
    *   return new Response("Hello World!");
    * });
-   * 
+   *
    * // Route with middleware
    * site.get("/hello",
    *   async (c, next) => {
@@ -367,16 +407,18 @@ export class Sapling {
    * Set custom handler for 404 Not Found responses
    * @example
    * ```ts
-   * site.setNotFoundHandler((c) => {
-   *   // Return custom 404 page
-   *   return new Response("Custom Not Found Page", {
-   *     status: 404,
-   *     headers: { "Content-Type": "text/html" }
-   *   });
+   * site.notFound((c) => {
+   *   return c.text("Custom 404 Message", 404);
+   * });
+   * ```
+   *
+   * ```ts
+   * site.notFound((c) => {
+   *   return c.html("<h1>Custom 404 Page</h1>");
    * });
    * ```
    */
-  setNotFoundHandler(handler: ContextHandler): Sapling {
+  notFound(handler: ContextHandler): Sapling {
     this.notFoundHandler = handler;
     return this;
   }
@@ -422,11 +464,22 @@ export class Sapling {
    * @param params - URL parameters
    */
   private createContext(req: Request, params: Record<string, string>): Context {
+    const url = new URL(req.url);
+    const searchParams = url.searchParams;
+    const queryParams = Object.fromEntries(searchParams.entries());
+
     const ctx = {
       req: {
         param: ((name?: string) => {
           if (name === undefined) return params;
-          return params[name] || '';
+          return params[name] || "";
+        }) as {
+          (): Record<string, string>;
+          (name: string): string;
+        },
+        query: ((name?: string) => {
+          if (name === undefined) return queryParams;
+          return searchParams.get(name) || "";
         }) as {
           (): Record<string, string>;
           (name: string): string;
@@ -435,7 +488,7 @@ export class Sapling {
         url: req.url,
         headers: req.headers,
         header: (name: string) => req.headers.get(name) ?? undefined,
-        json: async <T = unknown>() => await req.clone().json() as T,
+        json: async <T = unknown>() => (await req.clone().json()) as T,
         formData: async () => await req.clone().formData(),
         text: async () => await req.clone().text(),
       },
@@ -443,7 +496,7 @@ export class Sapling {
         headers: new Headers(),
       },
       state: {} as Record<string, unknown>,
-      query: () => new URL(req.url).searchParams,
+      query: () => searchParams,
       set: <T>(key: string, value: T) => {
         ctx.state[key] = value;
       },
@@ -462,24 +515,27 @@ export class Sapling {
           return new Response(content, { headers });
         }
       },
-      json: (data: unknown, status?: number) => new Response(JSON.stringify(data), {
-        status,
-        headers: {
-          "content-type": "application/json",
-          ...Object.fromEntries(ctx.res.headers)
-        }
-      }),
-      text: (content: string, status?: number) => new Response(content, {
-        status,
-        headers: {
-          "content-type": "text/plain; charset=UTF-8",
-          ...Object.fromEntries(ctx.res.headers)
-        }
-      }),
-      redirect: (location: string, status = 302) => new Response(null, {
-        status,
-        headers: { Location: location }
-      })
+      json: (data: unknown, status?: number) =>
+        new Response(JSON.stringify(data), {
+          status,
+          headers: {
+            "content-type": "application/json",
+            ...Object.fromEntries(ctx.res.headers),
+          },
+        }),
+      text: (content: string, status?: number) =>
+        new Response(content, {
+          status,
+          headers: {
+            "content-type": "text/plain; charset=UTF-8",
+            ...Object.fromEntries(ctx.res.headers),
+          },
+        }),
+      redirect: (location: string, status = 302) =>
+        new Response(null, {
+          status,
+          headers: { Location: location },
+        }),
     };
 
     // Add dev mode to context state
@@ -504,9 +560,12 @@ export class Sapling {
     for (const route of routes) {
       const match = route.pattern.exec(url);
       if (match) {
-        const groups = match.pathname.groups as Record<string, string | undefined>;
+        const groups = match.pathname.groups as Record<
+          string,
+          string | undefined
+        >;
         const params = Object.fromEntries(
-          Object.entries(groups).filter(([_, v]) => v !== undefined),
+          Object.entries(groups).filter(([_, v]) => v !== undefined)
         ) as Record<string, string>;
 
         const context = this.createContext(req, params);
@@ -515,7 +574,7 @@ export class Sapling {
         let index = 0;
         const allMiddleware = [...this.middleware, ...route.middleware];
 
-        const executeMiddleware = async (): Promise<Response | null> => {
+        const executeMiddleware: Next = async () => {
           if (index < allMiddleware.length) {
             const middleware = allMiddleware[index++];
             return await middleware(context, executeMiddleware);
@@ -536,36 +595,129 @@ export class Sapling {
   /**
    * Register a route for pre-rendering with optional parameters
    * @param path - The path to pre-render (can include dynamic segments like /:slug)
-   * @param handler - The route handler function
-   * @param params - Optional array of parameter objects to generate multiple pages
+   * @param handlers - Array of middleware functions and final handler
+   * @param params - Optional array of parameter objects for dynamic routes
    * @example
    * ```ts
-   * // Prerender a static route
+   * // Basic prerender route
    * site.prerender("/about", (c) => {
    *   return c.html("<h1>About Us</h1>");
    * });
-   * 
-   * // Prerender dynamic routes with parameters
-   * site.prerender("/blog/:slug", async (c) => {
-   *   const post = await getPost(c.req.param("slug"));
-   *   return c.html(`<h1>${post.title}</h1>${post.content}`);
-   * }, [
-   *   { slug: "first-post" },
-   *   { slug: "second-post" }
-   * ]);
+   *
+   * // Prerender route with middleware
+   * site.prerender("/dashboard",
+   *   async (c, next) => {
+   *     // Check authentication
+   *     if (!isAuthenticated(c)) {
+   *       return c.redirect('/login');
+   *     }
+   *     return next();
+   *   },
+   *   (c) => {
+   *     return c.html("<h1>Dashboard</h1>");
+   *   }
+   * );
+   *
+   * // Prerender dynamic routes with params
+   * site.prerender("/blog/:slug",
+   *   async (c) => {
+   *     const post = await getPost(c.req.param("slug"));
+   *     return c.html(`<h1>${post.title}</h1>${post.content}`);
+   *   },
+   *   [
+   *     { slug: "first-post" },
+   *     { slug: "second-post" }
+   *   ]
+   * );
+   *
+   * // Prerender dynamic routes with middleware and params
+   * site.prerender("/blog/:slug",
+   *   async (c, next) => {
+   *     // Add cache headers
+   *     c.res.headers.set('Cache-Control', 'public, max-age=3600');
+   *     return next();
+   *   },
+   *   async (c) => {
+   *     const post = await getPost(c.req.param("slug"));
+   *     return c.html(`<h1>${post.title}</h1>${post.content}`);
+   *   },
+   *   [
+   *     { slug: "first-post" },
+   *     { slug: "second-post" }
+   *   ]
+   * );
    * ```
    */
-  prerender(path: string, handler: ContextHandler, params?: Record<string, string>[]): Sapling {
-    this.prerenderRoutes.push({ path, handler, params });
+  prerender(
+    path: string,
+    ...args: Array<Middleware | ContextHandler | Record<string, string>[]>
+  ): Sapling {
+    const handlers = [...args];
 
-    // In development mode, also register as a GET route for dynamic rendering
+    // Extract params array if it's the last argument
+    const lastArg = handlers[handlers.length - 1];
+    const params = Array.isArray(lastArg)
+      ? (handlers.pop() as Record<string, string>[])
+      : undefined;
+
+    // Last handler is the route handler, everything before is middleware
+    const routeHandler = handlers.pop() as ContextHandler;
+    const routeMiddleware = handlers as Middleware[];
+
+    // Store the route for later prerendering during build
+    this.prerenderRoutes.push({
+      path,
+      handler: routeHandler,
+      middleware: routeMiddleware,
+      params,
+    });
+
     if (this.dev) {
-      this.get(path, handler);
+      // In development mode, register as a dynamic route with middleware
+      this.get(path, ...routeMiddleware, routeHandler);
       // Warn if prerender routes are detected in development mode
       if (!this.hasWarnedPrerender) {
-        console.warn(`\nPrerender routes detected!\nRemember to generate prerendered pages and add them to your static files to serve them in production.`);
+        console.warn(
+          `\nPrerender routes detected!\nRemember to run site.buildPrerenderRoutes("${this.buildDir}") to generate the static files for production.`
+        );
         this.hasWarnedPrerender = true;
       }
+    } else {
+      // In production, we serve prerendered files but still want middleware support
+      // First, create the static file handler that will serve the prerendered content
+      const staticHandler = serveStatic({
+        root: this.buildDir,
+        // Override cache control for prerendered pages to ensure fresh content
+        cacheControl: this.prerenderCacheControl,
+      });
+
+      // Create a handler that combines global and route-specific middleware with static file serving
+      // This ensures middleware runs before serving the prerendered content
+      const combinedHandler: ContextHandler = async (c) => {
+        // Set up the middleware execution chain
+        let index = 0;
+        // Include both global and route-specific middleware
+        const allMiddleware = [...this.middleware, ...routeMiddleware];
+
+        // Create a recursive function to execute middleware in sequence
+        const executeMiddleware: Next = async () => {
+          if (index < allMiddleware.length) {
+            // Execute the next middleware in the chain
+            // Pass executeMiddleware as the 'next' function to allow middleware to control the flow
+            const middleware = allMiddleware[index++];
+            return await middleware(c, executeMiddleware);
+          } else {
+            // Once all middleware has executed, serve the static file
+            return await staticHandler(c);
+          }
+        };
+
+        // Start the middleware chain execution
+        return await executeMiddleware();
+      };
+
+      // Register the combined handler as a GET route
+      this.get(path, combinedHandler);
     }
 
     return this;
@@ -577,14 +729,86 @@ export class Sapling {
    * @example
    * ```ts
    * // Generate pre-rendered pages in the dist directory
-   * await site.generatePrerenderedPages("dist");
+   * await site.buildPrerenderRoutes("dist");
    * ```
    */
-  async generatePrerenderedPages(outputDir: string): Promise<void> {
-    const { generatePrerenderedPages } = await import("./prerender/index.ts");
-    await generatePrerenderedPages(this.prerenderRoutes, {
+  async buildPrerenderRoutes(outputDir: string): Promise<void> {
+    const { buildPrerenderRoutes } = await import("./prerender/index.ts");
+
+    await buildPrerenderRoutes(this.prerenderRoutes, {
       outputDir,
-      createContext: this.createContext.bind(this)
+      createContext: (path: string, params: Record<string, string>) => {
+        const headers = new Headers();
+        const resHeaders = new Headers();
+        const state: Record<string, unknown> = { dev: false };
+
+        return {
+          req: {
+            param: ((name?: string) => {
+              if (name === undefined) return params;
+              return params[name] || "";
+            }) as {
+              (): Record<string, string>;
+              (name: string): string;
+            },
+            query: (() => ({})) as {
+              (): Record<string, string>;
+              (name: string): string;
+            },
+            method: "GET",
+            url: `http://localhost${path}`,
+            headers,
+            header: (name: string) => headers.get(name) ?? undefined,
+            json: <T>() => Promise.resolve({} as T),
+            formData: () => Promise.resolve(new FormData()),
+            text: () => Promise.resolve(""),
+          },
+          res: {
+            headers: resHeaders,
+          },
+          state,
+          query: () => new URLSearchParams(),
+          set: <T>(key: string, value: T) => {
+            state[key] = value;
+          },
+          get: <T>(key: string): T | undefined => {
+            return state[key] as T | undefined;
+          },
+          html: (content: string | ReadableStream) => {
+            const headers = {
+              "content-type": "text/html; charset=UTF-8",
+              ...Object.fromEntries(resHeaders),
+            };
+
+            if (typeof content === "string") {
+              return new Response(content, { headers });
+            } else {
+              return new Response(content, { headers });
+            }
+          },
+          json: (data: unknown, status?: number) =>
+            new Response(JSON.stringify(data), {
+              status,
+              headers: {
+                "content-type": "application/json",
+                ...Object.fromEntries(resHeaders),
+              },
+            }),
+          text: (content: string, status?: number) =>
+            new Response(content, {
+              status,
+              headers: {
+                "content-type": "text/plain; charset=UTF-8",
+                ...Object.fromEntries(resHeaders),
+              },
+            }),
+          redirect: (location: string, status = 302) =>
+            new Response(null, {
+              status,
+              headers: { Location: location },
+            }),
+        };
+      },
     });
   }
 }
