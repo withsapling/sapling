@@ -397,16 +397,18 @@ export class Sapling {
    * Set custom handler for 404 Not Found responses
    * @example
    * ```ts
-   * site.setNotFoundHandler((c) => {
-   *   // Return custom 404 page
-   *   return new Response("Custom Not Found Page", {
-   *     status: 404,
-   *     headers: { "Content-Type": "text/html" }
-   *   });
+   * site.notFound((c) => {
+   *   return c.text("Custom 404 Message", 404);
+   * });
+   * ```
+   *
+   * ```ts
+   * site.notFound((c) => {
+   *   return c.html("<h1>Custom 404 Page</h1>");
    * });
    * ```
    */
-  setNotFoundHandler(handler: ContextHandler): Sapling {
+  notFound(handler: ContextHandler): Sapling {
     this.notFoundHandler = handler;
     return this;
   }
