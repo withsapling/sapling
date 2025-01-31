@@ -1,8 +1,10 @@
 import type { Context } from "../types/index.ts";
 
 type StaticFileOptions = {
-  /** Directory to serve static files from */
-  directory: string;
+  /** Root directory to serve static files from */
+  root?: string;
+  /** Specific file path to serve */
+  path?: string;
   /** Optional URL path prefix for static files */
   urlPrefix?: string;
   /** Optional cache control header value. If not provided, defaults to aggressive caching in production */

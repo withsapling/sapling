@@ -5,8 +5,10 @@ import { contentType as getContentType } from "@std/media-types/content-type";
 import type { Context } from "../types/index.ts";
 
 type StaticFileOptions = {
-  /** Directory to serve static files from */
-  directory: string;
+  /** Root directory to serve static files from */
+  root?: string;
+  /** Specific file path to serve */
+  path?: string;
   /** Optional URL path prefix for static files */
   urlPrefix?: string;
   /** Optional cache control header value. If not provided, defaults to aggressive caching in production */
@@ -26,27 +28,27 @@ type FileInfo = {
  * @returns Middleware function that handles static file requests
  * @example
  * ```ts
- * // Basic usage
+ * // Basic usage - serve directory
  * site.get("/static/*", serveStatic({
- *   directory: "./public",
+ *   root: "./public",
  *   urlPrefix: "/static"
  * }));
  *
- * // A file in the public directory would be served at /static/index.html
- *
- * // Serve from root path
- * site.get("/*", serveStatic({
- *   directory: "./public"
+ * // Serve single file
+ * site.get("/favicon.ico", serveStatic({
+ *   path: "./favicon.ico"
  * }));
- *
- * // A file in the public directory would be served at /index.html
  * ```
  */
 export function serveStatic(
   options: StaticFileOptions
 ): (c: Context) => Promise<Response | null> {
   const fileCache = new Map<string, { hash: string; mtime: number }>();
-  const { directory, urlPrefix = "", cacheControl } = options;
+  const { root, path: specificPath, urlPrefix = "", cacheControl } = options;
+
+  if (!root && !specificPath) {
+    throw new Error("Either root or path must be specified");
+  }
 
   async function getFileInfo(
     filepath: string,
@@ -98,6 +100,60 @@ export function serveStatic(
       return new Response("Method Not Allowed", { status: 405 });
     }
 
+    // If specific path is provided, serve that file directly
+    if (specificPath) {
+      const file = await getFileInfo(specificPath, c.get("dev") ?? false);
+      if (!file) {
+        return null;
+      }
+
+      const headers = new Headers({
+        "Content-Type":
+          getContentType(path.extname(file.path)) || "application/octet-stream",
+        "Content-Length": String(file.size),
+      });
+
+      // Handle caching
+      if (!c.get("dev")) {
+        headers.set("ETag", `W/"${file.hash}"`);
+        headers.set(
+          "Cache-Control",
+          cacheControl || "public, max-age=31536000, immutable"
+        );
+
+        const ifNoneMatch = c.req.headers.get("If-None-Match");
+        if (ifNoneMatch === `W/"${file.hash}"`) {
+          await file.stream.close();
+          return new Response(null, { status: 304, headers });
+        }
+      } else {
+        headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+      }
+
+      if (c.req.method === "HEAD") {
+        await file.stream.close();
+        return new Response(null, { status: 200, headers });
+      }
+
+      // Create a ReadableStream from the file
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            const buffer = await file.stream.readFile();
+            controller.enqueue(buffer);
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          } finally {
+            await file.stream.close();
+          }
+        },
+      });
+
+      return new Response(readable, { headers });
+    }
+
+    // Handle serving from root directory
     const url = new URL(c.req.url);
     let pathname = decodeURIComponent(url.pathname);
 
@@ -117,9 +173,9 @@ export function serveStatic(
     // 2. Path with .html extension
     // 3. Path/index.html if it's a directory
     const possiblePaths = [
-      path.join(directory, normalizedPath),
-      path.join(directory, normalizedPath + ".html"),
-      path.join(directory, normalizedPath, "index.html"),
+      path.join(root!, normalizedPath),
+      path.join(root!, normalizedPath + ".html"),
+      path.join(root!, normalizedPath, "index.html"),
     ];
 
     let file: FileInfo | null = null;

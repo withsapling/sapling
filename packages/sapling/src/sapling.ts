@@ -676,7 +676,7 @@ export class Sapling {
       // In production, we serve prerendered files but still want middleware support
       // First, create the static file handler that will serve the prerendered content
       const staticHandler = serveStatic({
-        directory: this.buildDir,
+        root: this.buildDir,
         urlPrefix: "",
         // Override cache control for prerendered pages to ensure fresh content
         cacheControl: "public,max-age=0,must-revalidate",
