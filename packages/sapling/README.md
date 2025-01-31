@@ -14,6 +14,7 @@ A simpler SSR and API framework built on top of web standards. Sapling provides 
 - **Type-Safe**: Written in TypeScript with full type support
 - **Middleware Support**: Easy to extend and customize
 - **Modern Form Handling**: Built-in support for JSON and FormData
+- **Static Site Generation**: Built-in support for prerendering routes
 
 ## Documentation
 
@@ -50,7 +51,7 @@ site.get("/", (c) => {
 
 // JSON API endpoint
 site.post("/api/users", async (c) => {
-  const data = await c.jsonData<{ name: string }>();
+  const data = await c.req.json<{ name: string }>();
   return c.json({ created: data.name });
 });
 
@@ -59,11 +60,17 @@ site.get("/users/:id", (c) => {
   const userId = c.req.param("id");
   return c.text(`User ID: ${userId}`);
 });
+
+// Query parameters
+site.get("/search", (c) => {
+  const query = c.req.query("q");
+  return c.text(`Search query: ${query}`);
+});
 ```
 
 ## Layout System
 
-Sapling includes a powerful layout system with built-in UnoCSS support:
+Sapling includes a powerful layout system with built-in Tailwind CSS via [UnoCSS](https://unocss.dev/):
 
 ```typescript
 import { Layout } from "@sapling/sapling";
@@ -93,25 +100,48 @@ site.patch(path, handler)  // Handle PATCH requests
 
 ### Context Methods
 
-- `c.json(data)` - Send JSON response
-- `c.html(content)` - Send HTML response
-- `c.text(content)` - Send text response
-- `c.redirect(url, status?)` - Redirect response
-- `c.jsonData<T>()` - Parse JSON request body
-- `c.formData()` - Parse form data
-- `c.query()` - Access query parameters
-- `c.req.param(name)` - Access URL parameters
+Request Methods:
+- `c.req.json<T>()` - Parse JSON request body
+- `c.req.formData()` - Parse form data
+- `c.req.text()` - Get request body as text
+- `c.req.param(name?)` - Access URL parameters
+- `c.req.query(name?)` - Access query parameters
+- `c.req.header(name)` - Get request header
 
-### Layout Options
+Response Methods:
+- `c.json(data, status?)` - Send JSON response
+- `c.html(content)` - Send HTML response
+- `c.text(content, status?)` - Send text response
+- `c.redirect(url, status?)` - Redirect response
+
+State Management:
+- `c.set(key, value)` - Set state value
+- `c.get(key)` - Get state value
+
+### Middleware Support
 
 ```typescript
-interface LayoutProps {
-  unoConfig?: UserConfig;        // Custom UnoCSS configuration
-  disableTailwindReset?: boolean; // Disable default Tailwind reset
-  head?: string;                 // Additional head content
-  bodyClass?: string;            // Body element classes
-  children: string;              // Page content
-}
+// Global middleware
+site.use(async (c, next) => {
+  const start = Date.now();
+  const response = await next();
+  const duration = Date.now() - start;
+  console.log(`Request took ${duration}ms`);
+  return response;
+});
+
+// Route-specific middleware
+site.get("/protected",
+  async (c, next) => {
+    if (!isAuthenticated(c)) {
+      return c.redirect("/login");
+    }
+    return next();
+  },
+  (c) => {
+    return c.html("<h1>Protected Content</h1>");
+  }
+);
 ```
 
 ## Contributing
