@@ -677,7 +677,6 @@ export class Sapling {
       // First, create the static file handler that will serve the prerendered content
       const staticHandler = serveStatic({
         root: this.buildDir,
-        urlPrefix: "",
         // Override cache control for prerendered pages to ensure fresh content
         cacheControl: "public,max-age=0,must-revalidate",
       });
