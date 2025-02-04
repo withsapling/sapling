@@ -22,6 +22,10 @@ export interface LayoutProps {
    */
   disableTailwindReset?: boolean;
   /**
+   * Whether to enable Sapling Islands functionality
+   */
+  enableIslands?: boolean;
+  /**
    * The head content
    */
   head?: HtmlContent;
