@@ -726,10 +726,17 @@ export class Sapling {
   /**
    * Generate pre-rendered HTML files for registered routes
    * @param outputDir - The directory to output the HTML files
+   * @returns {Promise<void>} A promise that resolves when all files have been generated
    * @example
    * ```ts
    * // Generate pre-rendered pages in the dist directory
-   * await site.buildPrerenderRoutes("dist");
+   * await site.buildPrerenderRoutes("./dist");
+   *
+   * // You can also use a relative path
+   * await site.buildPrerenderRoutes("../dist");
+   *
+   * // Or an absolute path
+   * await site.buildPrerenderRoutes("/var/www/html");
    * ```
    */
   async buildPrerenderRoutes(outputDir: string): Promise<void> {

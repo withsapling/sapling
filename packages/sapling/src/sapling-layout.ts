@@ -17,6 +17,7 @@ import { SAPLING_VERSION } from "./constants.ts";
  * @param props.children - The content to render in the body of the page
  * @param props.stream - When true, returns a ReadableStream to stream the HTML output. Defaults to false
  * @param props.disableUnoCSS - When true, skips UnoCSS generation
+ * @param props.enableIslands - When true, adds the islands script and CSS
  *
  * @example
  * ```ts
@@ -78,6 +79,15 @@ export function Layout(props: LayoutProps): Promise<string> | ReadableStream {
           <style>${css.css}</style>`
               : ``
           }
+          ${
+            props.enableIslands
+              ? `
+          <!-- Sapling Islands -->
+          <script type="module" src="https://sapling-is.land"></script>
+          <style>sapling-island{display:contents}</style>
+          `
+              : ``
+          }
           ${props.head}
         </head>
         ${props.bodyClass ? `<body class="${props.bodyClass}">` : `<body>`}
@@ -115,6 +125,15 @@ export function Layout(props: LayoutProps): Promise<string> | ReadableStream {
               !props.disableUnoCSS
                 ? `<!-- UnoCSS CSS -->
             <style>${css.css}</style>`
+                : ``
+            }
+            ${
+              props.enableIslands
+                ? `
+            <!-- Sapling Islands -->
+            <script type="module" src="https://sapling-is.land"></script>
+            <style>sapling-island{display:contents}</style>
+            `
                 : ``
             }
             ${props.head}`
