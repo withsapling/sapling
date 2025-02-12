@@ -36,6 +36,15 @@ export interface Context {
   /** The original request object */
   req: {
     /**
+     * The raw Request object
+     * @example
+     * ```ts
+     * const raw = c.req.raw;
+     * console.log(raw.headers);
+     * ```
+     */
+    raw: Request;
+    /**
      * Get URL parameters
      * @example
      * ```ts
@@ -470,6 +479,7 @@ export class Sapling {
 
     const ctx = {
       req: {
+        raw: req,
         param: ((name?: string) => {
           if (name === undefined) return params;
           return params[name] || "";
@@ -751,6 +761,10 @@ export class Sapling {
 
         return {
           req: {
+            raw: new Request(`http://localhost${path}`, {
+              method: "GET",
+              headers,
+            }),
             param: ((name?: string) => {
               if (name === undefined) return params;
               return params[name] || "";
