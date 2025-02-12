@@ -101,6 +101,7 @@ site.patch(path, handler)  // Handle PATCH requests
 ### Context Methods
 
 Request Methods:
+- `c.req.raw` - The original Request object
 - `c.req.json<T>()` - Parse JSON request body
 - `c.req.formData()` - Parse form data
 - `c.req.text()` - Get request body as text
