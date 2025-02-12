@@ -233,6 +233,29 @@ type Route = {
 };
 
 /**
+ * Configuration options for creating a Sapling instance
+ */
+export interface SaplingOptions {
+  /**
+   * Enable development mode
+   * @default false
+   */
+  dev?: boolean;
+
+  /**
+   * Directory where prerendered pages are built
+   * @default "./dist"
+   */
+  buildDir?: string;
+
+  /**
+   * Cache-Control header value for prerendered pages
+   * @default "public,max-age=0,must-revalidate"
+   */
+  prerenderCacheControl?: string;
+}
+
+/**
  * Sapling class for handling HTTP requests
  * @example
  * ```ts
@@ -305,17 +328,8 @@ export class Sapling {
   /**
    * Create a new Sapling instance
    * @param options - Configuration options
-   * @param options.dev - Enable development mode (default: false)
-   * @param options.buildDir - Directory where prerendered pages are built (default: "./dist")
-   * @param options.prerenderCacheControl - Cache-Control header value for prerendered pages (default: "public,max-age=0,must-revalidate")
    */
-  constructor(
-    options: {
-      dev?: boolean;
-      buildDir?: string;
-      prerenderCacheControl?: string;
-    } = {}
-  ) {
+  constructor(options: SaplingOptions = {}) {
     this.dev = options.dev ?? false;
     this.buildDir = options.buildDir ?? "./dist";
     this.prerenderCacheControl =
