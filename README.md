@@ -35,7 +35,7 @@ bunx create-sapling@latest
 | [create](./packages/create/) | A CLI for creating Sapling projects | [![JSR](https://jsr.io/badges/@sapling/create)](https://jsr.io/@sapling/create) |
 | [markdown](./packages/markdown/) | A markdown parser for Sapling sites or Deno projects | [![JSR](https://jsr.io/badges/@sapling/markdown)](https://jsr.io/@sapling/markdown) |
 | [create-sapling](./packages/create-sapling/) | A CLI for creating Sapling projects with npm | [![npm](https://img.shields.io/npm/v/create-sapling.svg)](https://www.npmjs.com/package/create-sapling) |
-
+| [sapling-island](./packages/sapling-island/) | A web component for partial hydration | [CDN](https://sapling-is.land) |
 
 ## Examples
 
