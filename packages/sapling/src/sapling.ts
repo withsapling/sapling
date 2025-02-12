@@ -320,7 +320,17 @@ export class Sapling {
     this.buildDir = options.buildDir ?? "./dist";
     this.prerenderCacheControl =
       options.prerenderCacheControl ?? "public,max-age=0,must-revalidate";
-    ["GET", "POST", "PUT", "DELETE", "PATCH"].forEach((method) => {
+    [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE",
+      "PATCH",
+      "HEAD",
+      "OPTIONS",
+      "TRACE",
+      "CONNECT",
+    ].forEach((method) => {
       this.routes.set(method, []);
     });
   }
@@ -345,14 +355,27 @@ export class Sapling {
     const routeHandler = handlers.pop() as ContextHandler;
     const routeMiddleware = handlers as Middleware[];
 
-    const routes = this.routes.get(method);
-    patterns.forEach((pattern) => {
-      routes?.push({
-        pattern,
-        handler: routeHandler,
-        middleware: routeMiddleware,
+    // If method is "ALL", add the route to all HTTP methods
+    if (method === "ALL") {
+      this.routes.forEach((routes, _) => {
+        patterns.forEach((pattern) => {
+          routes.push({
+            pattern,
+            handler: routeHandler,
+            middleware: routeMiddleware,
+          });
+        });
       });
-    });
+    } else {
+      const routes = this.routes.get(method);
+      patterns.forEach((pattern) => {
+        routes?.push({
+          pattern,
+          handler: routeHandler,
+          middleware: routeMiddleware,
+        });
+      });
+    }
 
     return this;
   }
@@ -410,6 +433,45 @@ export class Sapling {
    */
   patch(path: string, ...handlers: (Middleware | ContextHandler)[]): Sapling {
     return this.add("PATCH", path, ...handlers);
+  }
+
+  /**
+   * Add a route handler for all HTTP methods. The path parameter is optional.
+   * @param pathOrHandler - URL pattern to match or handler if no path is provided
+   * @param handlers - Middleware functions and final handler
+   * @example
+   * ```ts
+   * // Handle all methods for a specific route
+   * site.all("/api/endpoint", (c) => {
+   *   return c.text(`Handled ${c.req.method} request`);
+   * });
+   *
+   * // Handle all methods for all routes
+   * site.all((c) => {
+   *   return c.text(`Handled ${c.req.method} request for ${c.req.url}`);
+   * });
+   *
+   * // With middleware
+   * site.all("/api/endpoint",
+   *   async (c, next) => {
+   *     console.log(`${c.req.method} request received`);
+   *     return next();
+   *   },
+   *   (c) => {
+   *     return c.text(`Handled ${c.req.method} request`);
+   *   }
+   * );
+   * ```
+   */
+  all(
+    pathOrHandler: string | Middleware | ContextHandler,
+    ...handlers: (Middleware | ContextHandler)[]
+  ): Sapling {
+    // If first argument is a function, treat it as a handler for root path
+    if (typeof pathOrHandler === "function") {
+      return this.add("ALL", "/", pathOrHandler, ...handlers);
+    }
+    return this.add("ALL", pathOrHandler, ...handlers);
   }
 
   /**
