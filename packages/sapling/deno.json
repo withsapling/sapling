@@ -2,12 +2,12 @@
   "name": "@sapling/sapling",
   "description": "A micro SSR framework",
   "license": "MIT",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "imports": {
     "@std/media-types": "jsr:@std/media-types@^1.1.0",
     "@std/path": "jsr:@std/path@^1.0.8",
-    "@unocss/core": "npm:@unocss/core@^65.4.0",
-    "@unocss/preset-uno": "npm:@unocss/preset-uno@^65.4.0",
+    "@unocss/core": "npm:@unocss/core@^66.0.0",
+    "@unocss/preset-uno": "npm:@unocss/preset-uno@^66.0.0",
     "urlpattern-polyfill": "npm:urlpattern-polyfill@^10.0.0"
   },
   "exports": {
