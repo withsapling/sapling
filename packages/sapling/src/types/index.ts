@@ -26,6 +26,10 @@ export interface LayoutProps {
    */
   enableIslands?: boolean;
   /**
+   * Whether to disable the generator meta tag
+   */
+  disableGeneratorTag?: boolean;
+  /**
    * The head content
    */
   head?: HtmlContent;
@@ -33,6 +37,10 @@ export interface LayoutProps {
    * Provide a custom body class
    */
   bodyClass?: string;
+  /**
+   * The language attribute for the HTML tag. Defaults to "en"
+   */
+  lang?: string;
   /**
    * The children content to render in the body of the page
    */

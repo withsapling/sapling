@@ -18,6 +18,8 @@ import { SAPLING_VERSION } from "./constants.ts";
  * @param props.stream - When true, returns a ReadableStream to stream the HTML output. Defaults to false
  * @param props.disableUnoCSS - When true, skips UnoCSS generation
  * @param props.enableIslands - When true, adds the islands script and CSS
+ * @param props.lang - Optional language for the HTML document
+ * @param props.disableGeneratorTag - When true, skips the generator meta tag
  *
  * @example
  * ```ts
@@ -67,11 +69,15 @@ export function Layout(props: LayoutProps): Promise<string> | ReadableStream {
       // Return the HTML as a string
       return `
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="${props.lang || "en"}">
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <meta name="generator" content="Sapling v${SAPLING_VERSION}">
+          ${
+            props.disableGeneratorTag
+              ? ``
+              : `<meta name="generator" content="Sapling v${SAPLING_VERSION}">`
+          }
           ${props.disableTailwindReset ? `` : `<style>${resetStyles}</style>`}
           ${
             !props.disableUnoCSS
@@ -115,11 +121,15 @@ export function Layout(props: LayoutProps): Promise<string> | ReadableStream {
       controller.enqueue(
         new TextEncoder().encode(
           `<!DOCTYPE html>
-          <html lang="en">
+          <html lang="${props.lang || "en"}">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta name="generator" content="Sapling v${SAPLING_VERSION}">
+            ${
+              props.disableGeneratorTag
+                ? ``
+                : `<meta name="generator" content="Sapling v${SAPLING_VERSION}">`
+            }
             ${props.disableTailwindReset ? `` : `<style>${resetStyles}</style>`}
             ${
               !props.disableUnoCSS
