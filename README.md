@@ -1,3 +1,6 @@
+![A Simpler Web Framework](.github/assets/gh-banner.jpg 'A Simpler Web Framework')
+
+
 # Sapling
 
 A Modern SSR framework for generating content-first websites. 
