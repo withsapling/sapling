@@ -5,9 +5,9 @@ import { html, type HtmlContent } from "@sapling/sapling";
  */
 interface PictureProps {
   src: string;
-  format?: "avif" | "webp";
+  format?: "avif" | "webp" | "jpeg" | "png";
   alt: string;
-  imgClass: string;
+  imgClass?: string;
   width: number;
   height: number;
   loading?: "lazy" | "eager";
