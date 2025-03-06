@@ -1,17 +1,24 @@
-import { html } from "@sapling/sapling";
+import { html, type HtmlContent } from "@sapling/sapling";
 
+/**
+ * Properties for the Picture component.
+ */
 interface PictureProps {
   src: string;
   alt: string;
   imgClass: string;
-
   width: number;
   height: number;
   loading?: "lazy" | "eager";
   decoding?: "async" | "sync" | "auto";
 }
 
-export function Picture(props: PictureProps) {
+/**
+ * Creates a picture element with source and fallback image.
+ * @param props - The properties for the picture element.
+ * @returns The HTML content for the picture element.
+ */
+export function Picture(props: PictureProps): HtmlContent {
   const { src, alt, imgClass, width, height, loading, decoding } = props;
 
   if (!src) {
