@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile, stat } from "node:fs/promises";
 import { join, relative, dirname } from "node:path";
 import { optimizeImage } from "wasm-image-optimization";
 import type { ImageSize, OptimizeImagesConfig } from "./types.ts";
-import { walk } from "jsr:@std/fs";
+import { walk } from "@std/fs";
 
 // Default configurations
 const DEFAULT_SIZES: ImageSize[] = [

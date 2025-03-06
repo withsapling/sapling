@@ -1,12 +1,15 @@
+import type { OptimizeImagesConfig } from "./types.ts";
+
 // Re-export types
 export * from "./types.ts";
 
-// Detect runtime and export appropriate implementation
-const isDeno = typeof Deno !== "undefined";
+let optimizeImages: (config: OptimizeImagesConfig) => Promise<void>;
 
-// Import the appropriate implementation
-const implementation = isDeno
-  ? await import("./deno.ts")
-  : await import("./node.ts");
+// Check if we're running in Deno
+if (typeof Deno !== "undefined") {
+  optimizeImages = (await import("./deno.ts")).optimizeImages;
+} else {
+  optimizeImages = (await import("./node.ts")).optimizeImages;
+}
 
-export const { optimizeImages } = implementation;
+export { optimizeImages };

@@ -1,6 +1,6 @@
-import { ensureDir, walk, exists } from "jsr:@std/fs";
-import { join, relative, dirname } from "jsr:@std/path";
-import { optimizeImage } from "npm:wasm-image-optimization";
+import { ensureDir, walk, exists } from "@std/fs";
+import { join, relative, dirname } from "@std/path";
+import { optimizeImage } from "wasm-image-optimization";
 import type { ImageSize, OptimizeImagesConfig } from "./types.ts";
 
 // Default configurations
