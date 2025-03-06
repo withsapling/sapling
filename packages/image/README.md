@@ -1,6 +1,6 @@
 # @sapling/image
 
-A powerful image optimization library for Deno that makes it easy to process and optimize images in various formats and sizes.
+A powerful image optimization library that makes it easy to process and optimize images in various formats and sizes.
 
 ## Features
 
