@@ -1,0 +1,13 @@
+{
+  "name": "@sapling/image",
+  "version": "0.1.0",
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^1.0.14",
+    "@std/path": "jsr:@std/path@^1.0.8",
+    "wasm-image-optimization": "npm:wasm-image-optimization@^1.2.28"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "exclude": ["example", "node_modules"]
+}

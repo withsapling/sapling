@@ -37,6 +37,7 @@ bunx create-sapling@latest
 | [sapling](./packages/sapling/) | A micro SSR framework | [![JSR](https://jsr.io/badges/@sapling/sapling)](https://jsr.io/@sapling/sapling) |
 | [create](./packages/create/) | A CLI for creating Sapling projects | [![JSR](https://jsr.io/badges/@sapling/create)](https://jsr.io/@sapling/create) |
 | [markdown](./packages/markdown/) | A markdown parser for Sapling sites or Deno projects | [![JSR](https://jsr.io/badges/@sapling/markdown)](https://jsr.io/@sapling/markdown) |
+| [image](./packages/image/) | A powerful image optimization library | [![JSR](https://jsr.io/badges/@sapling/image)](https://jsr.io/@sapling/image) |
 | [create-sapling](./packages/create-sapling/) | A CLI for creating Sapling projects with npm | [![npm](https://img.shields.io/npm/v/create-sapling.svg)](https://www.npmjs.com/package/create-sapling) |
 | [sapling-island](./packages/sapling-island/) | A web component for partial hydration | [CDN](https://sapling-is.land) |
 
@@ -50,3 +51,4 @@ We would recommend checking out the [Sapling Examples Repository](https://github
 - [UnoCSS](https://github.com/unocss/unocss) - We use UnoCSS for atomic CSS.
 - [marked](https://github.com/markedjs/marked) - Our markdown parser.
 - [shiki](https://github.com/shikijs/shiki) - The code highlighter for syntax highlighting.
+- [wasm-image-optimization](https://github.com/node-libraries/wasm-image-optimization) - The WASM-based image optimization library we use for image processing.
