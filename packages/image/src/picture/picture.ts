@@ -5,6 +5,7 @@ import { html, type HtmlContent } from "@sapling/sapling";
  */
 interface PictureProps {
   src: string;
+  format?: "avif" | "webp";
   alt: string;
   imgClass: string;
   width: number;
@@ -25,24 +26,26 @@ export function Picture(props: PictureProps): HtmlContent {
     throw new Error("src is required");
   }
 
+  const format = props.format ?? "avif";
+
   return html`<picture>
     <!-- Large viewport -->
     <source
       media="(min-width: 1024px)"
-      srcset="${src}-lg.avif"
-      type="image/avif"
+      srcset="${src}-lg.${format}"
+      type="image/${format}"
     />
     <!-- Medium viewport -->
     <source
       media="(min-width: 640px)"
-      srcset="${src}-md.avif"
-      type="image/avif"
+      srcset="${src}-md.${format}"
+      type="image/${format}"
     />
     <!-- Small viewport -->
-    <source srcset="${src}-sm.avif" type="image/avif" />
+    <source srcset="${src}-sm.${format}" type="image/${format}" />
     <!-- Fallback image -->
     <img
-      src="${src}"
+      src="${src}-lg.${format}"
       alt="${alt}"
       class="${imgClass}"
       width="${width}"
