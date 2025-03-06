@@ -1,19 +1,37 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@sapling/sapling@0.5": "0.5.0",
     "jsr:@std/fs@^1.0.14": "1.0.14",
+    "jsr:@std/media-types@^1.1.0": "1.1.0",
     "jsr:@std/path@^1.0.8": "1.0.8",
     "npm:@types/node@*": "22.12.0",
+    "npm:@unocss/core@66": "66.0.0",
+    "npm:@unocss/preset-uno@66": "66.0.0",
     "npm:glob@*": "11.0.1",
+    "npm:urlpattern-polyfill@10": "10.0.0",
     "npm:wasm-image-optimization@*": "1.2.28",
     "npm:wasm-image-optimization@^1.2.28": "1.2.28"
   },
   "jsr": {
+    "@sapling/sapling@0.5.0": {
+      "integrity": "8dd6261c2e85bbb9706723cd9a5067d75b844125e0a82a4d2e3d40ce55ed62c6",
+      "dependencies": [
+        "jsr:@std/media-types",
+        "jsr:@std/path",
+        "npm:@unocss/core",
+        "npm:@unocss/preset-uno",
+        "npm:urlpattern-polyfill"
+      ]
+    },
     "@std/fs@1.0.14": {
       "integrity": "1e84bf0b95fe08f41f1f4aea9717bbf29f45408a56ce073b0114474ce1c9fccf",
       "dependencies": [
         "jsr:@std/path"
       ]
+    },
+    "@std/media-types@1.1.0": {
+      "integrity": "c9d093f0c05c3512932b330e3cc1fe1d627b301db33a4c2c2185c02471d6eaa4"
     },
     "@std/path@1.0.8": {
       "integrity": "548fa456bb6a04d3c1a1e7477986b6cffbce95102d0bb447c67c4ee70e0364be"
@@ -31,10 +49,52 @@
         "wrap-ansi-cjs@npm:wrap-ansi@7.0.0"
       ]
     },
+    "@jridgewell/sourcemap-codec@1.5.0": {
+      "integrity": "sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ=="
+    },
     "@types/node@22.12.0": {
       "integrity": "sha512-Fll2FZ1riMjNmlmJOdAyY5pUbkftXslB5DgEzlIuNaiWhXd00FhWxVC/r4yV/4wBb9JfImTu+jiSvXTkJ7F/gA==",
       "dependencies": [
         "undici-types"
+      ]
+    },
+    "@unocss/core@66.0.0": {
+      "integrity": "sha512-PdVbSMHNDDkr++9nkqzsZRAkaU84gxMTEgYbqI7dt2p1DXp/5tomVtmMsr2/whXGYKRiUc0xZ3p4Pzraz8TcXA=="
+    },
+    "@unocss/extractor-arbitrary-variants@66.0.0": {
+      "integrity": "sha512-vlkOIOuwBfaFBJcN6o7+obXjigjOlzVFN/jT6pG1WXbQDTRZ021jeF3i9INdb9D/0cQHSeDvNgi1TJ5oUxfiow==",
+      "dependencies": [
+        "@unocss/core"
+      ]
+    },
+    "@unocss/preset-mini@66.0.0": {
+      "integrity": "sha512-d62eACnuKtR0dwCFOQXgvw5VLh5YSyK56xCzpHkh0j0GstgfDLfKTys0T/XVAAvdSvAy/8A8vhSNJ4PlIc9V2A==",
+      "dependencies": [
+        "@unocss/core",
+        "@unocss/extractor-arbitrary-variants",
+        "@unocss/rule-utils"
+      ]
+    },
+    "@unocss/preset-uno@66.0.0": {
+      "integrity": "sha512-qgoZ/hzTI32bQvcyjcwvv1X/dbPlmQNehzgjUaL7QFT0q0/CN/SRpysfzoQ8DLl2se9T+YCOS9POx3KrpIiYSQ==",
+      "dependencies": [
+        "@unocss/core",
+        "@unocss/preset-wind3"
+      ]
+    },
+    "@unocss/preset-wind3@66.0.0": {
+      "integrity": "sha512-WAGRmpi1sb2skvYn9DBQUvhfqrJ+VmQmn5ZGsT2ewvsk7HFCvVLAMzZeKrrTQepeNBRhg6HzFDDi8yg6yB5c9g==",
+      "dependencies": [
+        "@unocss/core",
+        "@unocss/preset-mini",
+        "@unocss/rule-utils"
+      ]
+    },
+    "@unocss/rule-utils@66.0.0": {
+      "integrity": "sha512-UJ51YHbwxYTGyj35ugsPlOT4gaa7tCbXdywZ3m5Nn0JgywwIqGmBFyiN9ZjHBHfJuDxmmPd6lxojoBscih/WMQ==",
+      "dependencies": [
+        "@unocss/core",
+        "magic-string"
       ]
     },
     "ansi-regex@5.0.1": {
@@ -120,6 +180,12 @@
     "lru-cache@11.0.2": {
       "integrity": "sha512-123qHRfJBmo2jXDbo/a5YOQrJoHF/GNQTLzQ5+IdK5pWpceK17yRc6ozlWd25FxvGKQbIUs91fDFkXmDHTKcyA=="
     },
+    "magic-string@0.30.17": {
+      "integrity": "sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==",
+      "dependencies": [
+        "@jridgewell/sourcemap-codec"
+      ]
+    },
     "minimatch@10.0.1": {
       "integrity": "sha512-ethXTt3SGGR+95gudmqJ1eNhRO7eGEGIgYA9vnPatK4/etz2MEVDno5GMCibdMTuBMyElzIlgxMna3K94XDIDQ==",
       "dependencies": [
@@ -185,6 +251,9 @@
     "undici-types@6.20.0": {
       "integrity": "sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg=="
     },
+    "urlpattern-polyfill@10.0.0": {
+      "integrity": "sha512-H/A06tKD7sS1O1X2SshBVeA5FLycRpjqiBeqGKmBwBDBy28EnRjORxTNe269KSSr5un5qyWi1iL61wLxpd+ZOg=="
+    },
     "wasm-image-optimization@1.2.28": {
       "integrity": "sha512-mjhJXHSd/5kqASdRL/2skvVMNSv23NwQY3w/yGqQM0dbJjwSAY8BJtAaD9qrt69TZjvNmJl09EwOHRRi3ah/Ug==",
       "dependencies": [
@@ -219,6 +288,7 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@sapling/sapling@0.5",
       "jsr:@std/fs@^1.0.14",
       "jsr:@std/path@^1.0.8",
       "npm:wasm-image-optimization@^1.2.28"
