@@ -450,6 +450,49 @@ export class Sapling {
   }
 
   /**
+   * Add an OPTIONS route handler with optional middleware
+   * @param path - URL pattern to match
+   * @param handlers - Middleware functions and final handler
+   * @example
+   * ```ts
+   * // Basic OPTIONS handler
+   * site.options("/api/users", (c) => {
+   *   return new Response(null, {
+   *     status: 204,
+   *     headers: {
+   *       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE",
+   *       "Access-Control-Allow-Headers": "Content-Type, Authorization"
+   *     }
+   *   });
+   * });
+   *
+   * // OPTIONS handler with middleware
+   * site.options("/api/users",
+   *   async (c, next) => {
+   *     // Add CORS headers
+   *     c.res.headers.set("Access-Control-Allow-Origin", "*");
+   *     return next();
+   *   },
+   *   (c) => {
+   *     return new Response(null, {
+   *       status: 204,
+   *       headers: c.res.headers
+   *     });
+   *   }
+   * );
+   * ```
+   *
+   * Global OPTIONS handler
+   * site.use(cors());
+   * site.options("*", (c) => {
+   *   return new Response(null, { status: 204 });
+   * });
+   */
+  options(path: string, ...handlers: (Middleware | ContextHandler)[]): Sapling {
+    return this.add("OPTIONS", path, ...handlers);
+  }
+
+  /**
    * Add a route handler for all HTTP methods. The path parameter is optional.
    * @param pathOrHandler - URL pattern to match or handler if no path is provided
    * @param handlers - Middleware functions and final handler
