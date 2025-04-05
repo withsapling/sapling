@@ -6,7 +6,7 @@ import type { ExperimentalJSXLayoutProps } from "./types/index.ts";
 import { SAPLING_VERSION } from "./constants.ts";
 
 
-export async function ExperimentalJSXLayout(props: ExperimentalJSXLayoutProps) {
+export async function ExperimentalJSXLayout(props: ExperimentalJSXLayoutProps): Promise<string> {
   let resetStyles = ``;
   let css = ``; 
   // Tailwind Reset Minified
