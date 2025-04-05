@@ -5,6 +5,8 @@ import type { UserConfig } from "@unocss/core";
 import { SAPLING_VERSION } from "./constants.ts";
 import { html, raw } from "@hono/hono/html";
 import type { HtmlEscapedString } from "@hono/hono/utils/html";
+
+
 /**
  * The Layout function creates an HTML document with UnoCSS support and optional Tailwind reset styles.
  *
@@ -97,7 +99,7 @@ export function ExperimentalJSXLayout(props: LayoutProps): Promise<HtmlEscapedSt
           }
           ${props.head}
         </head>
-        ${props.bodyClass ? `<body class="${props.bodyClass}">` : `<body>`}
+        ${props.bodyClass ? raw(`<body class="${props.bodyClass}">`) : raw(`<body>`)}
           ${props.children}
         </body>
         </html>
