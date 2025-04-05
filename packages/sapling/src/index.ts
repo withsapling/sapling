@@ -4,7 +4,7 @@ import { Layout } from "./sapling-layout.ts";
 export { Layout };
 
 // export prerender types
-export type { PrerenderRoute, PrerenderOptions } from "./prerender/index.ts";
+// export type { PrerenderRoute, PrerenderOptions } from "./prerender/index.ts";
 
 // export all types from types/index.ts
 export * from "./types/index.ts";
