@@ -11,8 +11,7 @@
     "urlpattern-polyfill": "npm:urlpattern-polyfill@^10.0.0"
   },
   "exports": {
-    ".": "./src/index.ts",
-    "./cors": "./src/cors.ts"
+    ".": "./src/index.ts"
   },
   "compilerOptions": {
     "lib": ["ESNext", "DOM", "DOM.Iterable", "deno.ns"]
