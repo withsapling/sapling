@@ -29,8 +29,10 @@ export async function ExperimentalJSXLayout(props: ExperimentalJSXLayoutProps): 
   )).css;
 
   return html`<!doctype html>
-      <html>
+      <html lang="${props.lang}">
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>${props.title}</title>
           ${props.disableGeneratorTag ? '' : raw(`<meta name="generator" content="Sapling v${SAPLING_VERSION}">`)}
           ${props.enableIslands ? html`<script type="module" src="https://sapling-is.land"></script><style>sapling-island{display:contents}</style>
