@@ -3,6 +3,9 @@ import presetUno from "@unocss/preset-uno";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 import { SAPLING_VERSION } from "./constants.ts";
+import { html, raw } from "@hono/hono/html";
+import type { HtmlEscapedString } from "@hono/hono/utils/html";
+
 
 /**
  * The Layout function creates an HTML document with UnoCSS support and optional Tailwind reset styles.
@@ -30,7 +33,7 @@ import { SAPLING_VERSION } from "./constants.ts";
  * const stream = Layout({ children: html`<h1>Hello World</h1>`, stream: true });
  * ```
  */
-export function Layout(props: LayoutProps): Promise<string> | ReadableStream {
+export function Layout(props: LayoutProps): Promise<HtmlEscapedString> | ReadableStream {
   // UnoCSS config and generator setup
   let config: UserConfig = {
     presets: [presetUno()],
@@ -67,7 +70,7 @@ export function Layout(props: LayoutProps): Promise<string> | ReadableStream {
       }
 
       // Return the HTML as a string
-      return `
+      return html`
         <!DOCTYPE html>
         <html lang="${props.lang || "en"}">
         <head>
@@ -75,28 +78,28 @@ export function Layout(props: LayoutProps): Promise<string> | ReadableStream {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           ${
             props.disableGeneratorTag
-              ? ``
-              : `<meta name="generator" content="Sapling v${SAPLING_VERSION}">`
+              ? ""
+              : raw(`<meta name="generator" content="Sapling v${SAPLING_VERSION}">`)  
           }
-          ${props.disableTailwindReset ? `` : `<style>${resetStyles}</style>`}
+          ${props.disableTailwindReset ? "" : raw(`<style>${resetStyles}</style>`)}
           ${
             !props.disableUnoCSS
-              ? `<!-- UnoCSS CSS -->
-          <style>${css.css}</style>`
-              : ``
+              ? raw(`<!-- UnoCSS CSS -->
+          <style>${css.css}</style>`)
+              : ""
           }
           ${
             props.enableIslands
-              ? `
+              ? raw(`
           <!-- Sapling Islands -->
           <script type="module" src="https://sapling-is.land"></script>
           <style>sapling-island{display:contents}</style>
-          `
-              : ``
+          `)
+              : ""
           }
           ${props.head}
         </head>
-        ${props.bodyClass ? `<body class="${props.bodyClass}">` : `<body>`}
+        ${props.bodyClass ? raw(`<body class="${props.bodyClass}">`) : raw(`<body>`)}
           ${props.children}
         </body>
         </html>
