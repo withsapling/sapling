@@ -32,7 +32,6 @@ export async function ExperimentalJSXLayout(props: ExperimentalJSXLayoutProps): 
       <html>
         <head>
           <title>${props.title}</title>
-          ${props.disableGeneratorTag ? `` : `<meta name="generator" content="Sapling v${SAPLING_VERSION}">`}
           ${props.enableIslands ? html`<script type="module" src="https://sapling-is.land"></script><style>sapling-island{display:contents}</style>
             ` : ``}
           <style>${raw(resetStyles)}</style>
