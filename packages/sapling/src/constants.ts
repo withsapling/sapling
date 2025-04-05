@@ -1,1 +1,1 @@
-export const SAPLING_VERSION = "0.6.0-beta.5";
+export const SAPLING_VERSION = "0.6.0-beta.6";
