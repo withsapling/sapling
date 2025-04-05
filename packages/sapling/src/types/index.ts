@@ -42,3 +42,30 @@ export interface LayoutProps {
    */
   stream?: boolean;
 }
+
+export interface ExperimentalJSXLayoutProps {
+  /**
+   * The title of the page
+   */
+  title?: string;
+  /**
+   * The language attribute for the HTML tag. Defaults to "en"
+   */
+  lang?: string;
+  /**
+   * Whether to disable the generator meta tag
+   */
+  disableGeneratorTag?: boolean;
+  /**
+   * The head content
+   */
+  head?: any;
+  /**
+   * Whether to enable Sapling Islands functionality
+   */
+  enableIslands?: boolean;
+  /**
+   * The children content to render in the body of the page
+   */
+  children: any;
+}
