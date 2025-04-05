@@ -24,7 +24,7 @@ export interface LayoutProps {
   /**
    * The head content
    */
-  head?: string;
+  head?: string | Promise<string>;
   /**
    * Provide a custom body class
    */
@@ -36,7 +36,7 @@ export interface LayoutProps {
   /**
    * The children content to render in the body of the page
    */
-  children: string;
+  children: string | Promise<string>;
   /**
    * When true, returns a ReadableStream to stream the HTML output. Defaults to false
    */
