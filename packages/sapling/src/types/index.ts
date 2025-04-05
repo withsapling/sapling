@@ -45,6 +45,10 @@ export interface LayoutProps {
 
 export interface ExperimentalJSXLayoutProps {
   /**
+   * Pass an optional custom UnoCSS config
+   */
+  unoConfig?: UserConfig;
+  /**
    * The title of the page
    */
   title?: string;
