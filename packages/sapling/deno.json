@@ -2,7 +2,7 @@
   "name": "@sapling/sapling",
   "description": "A micro SSR framework",
   "license": "MIT",
-  "version": "0.6.0-beta.13",
+  "version": "0.6.0-beta.14",
   "imports": {
     "@hono/hono": "jsr:@hono/hono@^4.7.5",
     "@std/media-types": "jsr:@std/media-types@^1.1.0",
@@ -15,9 +15,7 @@
     ".": "./src/index.ts"
   },
   "compilerOptions": {
-    "lib": ["ESNext", "DOM", "DOM.Iterable", "deno.ns"],
-    "jsx": "precompile",
-    "jsxImportSource": "@hono/hono/jsx"
+    "lib": ["ESNext", "DOM", "DOM.Iterable", "deno.ns"]
   },
   "exclude": ["node_modules", "example"],
   "lock": false,
