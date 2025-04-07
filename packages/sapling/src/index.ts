@@ -1,8 +1,9 @@
 import { Layout } from "./sapling-layout.ts";
 import { Sapling } from "./sapling.ts";
 import { HtmlStreamLayout } from "./html-stream-layout.ts";
-// export functions
+// export Default Layout
 export { Layout };
+// export Streaming Layout
 export { HtmlStreamLayout };
 // export Sapling class
 export { Sapling };

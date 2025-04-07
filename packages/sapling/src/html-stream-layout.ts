@@ -23,9 +23,20 @@ import type { HtmlEscapedString } from "@hono/hono/utils/html";
  * @param props.disableGeneratorTag - When true, skips the generator meta tag
  *
  * @example
+ * Example usage with Hono
  * ```ts
- * // Streaming usage
- * const stream = Layout({ children: html`<h1>Hello World</h1>`, stream: true });
+ * const site = new Hono();
+ * 
+ * // Home page
+ * site.get("/", async (c: Context) => {
+ *   const stream = await Home();
+ *   return c.body(stream, {
+ *     headers: {
+ *       "Content-Type": "text/html",
+ *       "Transfer-Encoding": "chunked",
+ *     },
+ *   });
+ * });
  * ```
  */
 export function HtmlStreamLayout(props: LayoutProps): Promise<HtmlEscapedString> | ReadableStream {
