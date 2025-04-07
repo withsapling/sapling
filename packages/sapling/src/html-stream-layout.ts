@@ -3,7 +3,6 @@ import presetUno from "@unocss/preset-uno";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 import { SAPLING_VERSION } from "./constants.ts";
-import { html, raw } from "@hono/hono/html";
 import type { HtmlEscapedString } from "@hono/hono/utils/html";
 
 
@@ -24,12 +23,23 @@ import type { HtmlEscapedString } from "@hono/hono/utils/html";
  * @param props.disableGeneratorTag - When true, skips the generator meta tag
  *
  * @example
+ * Example usage with Hono
  * ```ts
- * // Basic usage (non-streaming)
- * const html = await Layout({ children: html`<h1>Hello World</h1>` });
+ * const site = new Hono();
+ * 
+ * // Home page
+ * site.get("/", async (c: Context) => {
+ *   const stream = await Home();
+ *   return c.body(stream, {
+ *     headers: {
+ *       "Content-Type": "text/html",
+ *       "Transfer-Encoding": "chunked",
+ *     },
+ *   });
+ * });
  * ```
  */
-export function Layout(props: LayoutProps): HtmlEscapedString | Promise<HtmlEscapedString> {
+export function HtmlStreamLayout(props: LayoutProps): Promise<HtmlEscapedString> | ReadableStream {
   // UnoCSS config and generator setup
   let config: UserConfig = {
     presets: [presetUno()],
@@ -52,8 +62,9 @@ export function Layout(props: LayoutProps): HtmlEscapedString | Promise<HtmlEsca
     resetStyles = ``;
   }
 
-
-    return (async () => {
+  // Streaming logic
+  return new ReadableStream({
+    async start(controller) {
       // Only generate UnoCSS if not disabled
       if (!props.disableUnoCSS) {
         // Create the UnoCSS generator
@@ -64,40 +75,51 @@ export function Layout(props: LayoutProps): HtmlEscapedString | Promise<HtmlEsca
         );
       }
 
-      // Return the HTML as a string
-      return html`
-        <!DOCTYPE html>
-        <html lang="${props.lang || "en"}">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          ${
-            props.disableGeneratorTag
-              ? ""
-              : raw(`<meta name="generator" content="Sapling v${SAPLING_VERSION}">`)  
-          }
-          ${props.disableTailwindReset ? "" : raw(`<style>${resetStyles}</style>`)}
-          ${
-            !props.disableUnoCSS
-              ? raw(`<!-- UnoCSS CSS -->
-          <style>${css.css}</style>`)
-              : ""
-          }
-          ${
-            props.enableIslands
-              ? raw(`
-          <!-- Sapling Islands -->
-          <script type="module" src="https://sapling-is.land"></script>
-          <style>sapling-island{display:contents}</style>
-          `)
-              : ""
-          }
-          ${props.head}
-        </head>
-        ${props.bodyClass ? raw(`<body class="${props.bodyClass}">`) : raw(`<body>`)}
-          ${props.children}
-        </body>
-        </html>
-      `;
-    })();
+      // Enqueue the beginning of the HTML document
+      controller.enqueue(
+        new TextEncoder().encode(
+          `<!DOCTYPE html>
+          <html lang="${props.lang || "en"}">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            ${
+              props.disableGeneratorTag
+                ? ``
+                : `<meta name="generator" content="Sapling v${SAPLING_VERSION}">`
+            }
+            ${props.disableTailwindReset ? `` : `<style>${resetStyles}</style>`}
+            ${
+              !props.disableUnoCSS
+                ? `<!-- UnoCSS CSS -->
+            <style>${css.css}</style>`
+                : ``
+            }
+            ${
+              props.enableIslands
+                ? `
+            <!-- Sapling Islands -->
+            <script type="module" src="https://sapling-is.land"></script>
+            <style>sapling-island{display:contents}</style>
+            `
+                : ``
+            }
+            ${props.head}`
+        )
+      );
+
+      // Enqueue the body and the rest of the HTML
+      controller.enqueue(
+        new TextEncoder().encode(
+          `${props.bodyClass ? `<body class="${props.bodyClass}">` : `<body>`}
+            ${props.children}
+          </body>
+          </html>`
+        )
+      );
+
+      // Close the stream
+      controller.close();
+    },
+  });
 }
