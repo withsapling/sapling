@@ -1,4 +1,5 @@
-import { html, type HtmlContent } from "@sapling/sapling";
+import { html } from "@hono/hono/html";
+import type { HtmlEscapedString } from "@hono/hono/utils/html";
 
 /**
  * Properties for the Picture component.
@@ -19,7 +20,7 @@ interface PictureProps {
  * @param props - The properties for the picture element.
  * @returns The HTML content for the picture element.
  */
-export function Picture(props: PictureProps): HtmlContent {
+export function Picture(props: PictureProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   const { src, alt, imgClass, width, height, loading, decoding } = props;
 
   if (!src) {
@@ -47,7 +48,7 @@ export function Picture(props: PictureProps): HtmlContent {
     <img
       src="${src}-lg.${format}"
       alt="${alt}"
-      class="${imgClass}"
+      class="${imgClass ?? ""}"
       width="${width}"
       height="${height}"
       loading="${loading ?? "lazy"}"
