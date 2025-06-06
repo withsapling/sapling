@@ -1,5 +1,5 @@
 import { createGenerator } from "@unocss/core";
-import presetUno from "@unocss/preset-uno";
+import presetWind3 from "@unocss/preset-wind3";
 import type { LayoutProps } from "./types/index.ts";
 import type { UserConfig } from "@unocss/core";
 import { SAPLING_VERSION } from "./constants.ts";
@@ -32,7 +32,7 @@ import type { HtmlEscapedString } from "@hono/hono/utils/html";
 export function Layout(props: LayoutProps): HtmlEscapedString | Promise<HtmlEscapedString> {
   // UnoCSS config and generator setup
   let config: UserConfig = {
-    presets: [presetUno()],
+    presets: [presetWind3()],
   };
   let css = { css: "" }; // Default empty CSS if UnoCSS is disabled
 
