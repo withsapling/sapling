@@ -37,7 +37,7 @@ export interface LayoutProps {
   /**
    * The children content to render in the body of the page
    */
-  children: string | Promise<string> | JSX.Element;
+  children: string | Promise<string> | Element | JSX.Element;
   /**
    * When true, returns a ReadableStream to stream the HTML output. Defaults to false
    */
