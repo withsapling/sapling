@@ -1,3 +1,4 @@
+import type { JSX } from "@hono/hono/jsx/jsx-runtime";
 import type { UserConfig } from "@unocss/core";
 
 export interface LayoutProps {
@@ -36,7 +37,7 @@ export interface LayoutProps {
   /**
    * The children content to render in the body of the page
    */
-  children: string | Promise<string>;
+  children: string | Promise<string> | JSX.Element;
   /**
    * When true, returns a ReadableStream to stream the HTML output. Defaults to false
    */
