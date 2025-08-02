@@ -1,4 +1,4 @@
-import { type Context, Hono } from 'hono'
+import { type Context, Hono, MiddlewareHandler, Next } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 
@@ -55,7 +55,7 @@ export interface CreateUserData {
   provider: string
 }
 
-export function createSaplingAuth(config: SaplingAuthConfig) {
+export function createSaplingAuth(config: SaplingAuthConfig): Hono {
   const app = new Hono()
 
   // OAuth initiation endpoints
@@ -368,8 +368,8 @@ export function createSaplingAuth(config: SaplingAuthConfig) {
 }
 
 // Auth middleware
-export function authMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret'>) {
-  return async (c: Context, next: Function) => {
+export function authMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret'>): MiddlewareHandler {
+  return async (c: Context, next: Next) => {
     const token = getCookie(c, 'auth_token')
     
     if (!token) {
