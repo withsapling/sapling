@@ -1,19 +1,6 @@
-import type { JSX } from "@hono/hono/jsx/jsx-runtime";
-import type { UserConfig } from "@unocss/core";
+import type { JSX } from "hono/jsx/jsx-runtime";
 
 export interface LayoutProps {
-  /**
-   * Pass an optional custom UnoCSS config
-   */
-  unoConfig?: UserConfig;
-  /**
-   * Whether to disable UnoCSS entirely
-   */
-  disableUnoCSS?: boolean;
-  /**
-   * Whether to disable the tailwind reset
-   */
-  disableTailwindReset?: boolean;
   /**
    * Whether to enable Sapling Islands functionality
    */
@@ -38,8 +25,4 @@ export interface LayoutProps {
    * The children content to render in the body of the page
    */
   children: string | Promise<string> | Element | JSX.Element;
-  /**
-   * When true, returns a ReadableStream to stream the HTML output. Defaults to false
-   */
-  stream?: boolean;
 }
