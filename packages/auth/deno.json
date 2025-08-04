@@ -8,5 +8,8 @@
   },
   "imports": {
     "hono": "npm:hono@^4.8.10"
-  }
+  },
+  "exclude": [
+    "examples/**"
+  ]
 }

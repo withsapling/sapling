@@ -2,13 +2,6 @@ import { type Context, Hono, type MiddlewareHandler, type Next } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 
-// Extend Hono's context to include our user type
-declare module 'hono' {
-  interface ContextVariableMap {
-    user: User
-  }
-}
-
 export interface SaplingAuthConfig {
   jwtSecret: string
   google?: GoogleProvider
