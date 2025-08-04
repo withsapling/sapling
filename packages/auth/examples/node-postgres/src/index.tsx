@@ -12,34 +12,6 @@ const app = new Hono();
 // Mount auth routes
 app.route('/auth', auth);
 
-// Custom logout route that redirects to login
-app.post('/auth/logout', async (c: Context) => {
-  const { getCookie, deleteCookie } = await import('hono/cookie');
-  const refreshToken = getCookie(c, 'refresh_token');
-  
-  if (refreshToken) {
-    // Revoke refresh token in database
-    try {
-      const { createDatabaseAdapter } = await import('./auth/database-adapter.js');
-      const db = createDatabaseAdapter();
-      await db.revokeRefreshToken(refreshToken);
-    } catch (error) {
-      console.error('Error revoking refresh token:', error);
-    }
-  }
-
-  // Delete cookies
-  deleteCookie(c, 'auth_token');
-  deleteCookie(c, 'refresh_token');
-  
-  // Set cache control headers to prevent browser caching
-  c.header('Cache-Control', 'no-cache, no-store, must-revalidate, private');
-  c.header('Pragma', 'no-cache');
-  c.header('Expires', '0');
-  
-  return c.redirect('/login');
-});
-
 // Login page (redirect if already authenticated)
 app.get("/login", optionalAuthMiddleware, (c: Context) => {
   const user = c.get('user');

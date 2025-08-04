@@ -1,12 +1,23 @@
 import { db } from '../db/db.js'
 import { users, tokens, type User } from '../db/schema.js'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, or } from 'drizzle-orm'
 import type { DatabaseAdapter, CreateUserData } from '@sapling/auth'
 import { createHash } from 'node:crypto'
 
 export function createDatabaseAdapter(): DatabaseAdapter {
   return {
     async findUser(providerId: string, provider: string): Promise<User | null> {
+      // If providerId looks like a UUID, search by user ID instead of provider ID
+      if (providerId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, providerId))
+          .limit(1)
+        
+        return user || null
+      }
+      
       const column = provider === 'google' ? users.googleId : users.githubId
       
       const [user] = await db
