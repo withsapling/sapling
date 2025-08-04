@@ -1,14 +1,24 @@
-import { type Context, Hono, MiddlewareHandler, Next } from 'hono'
+import { type Context, Hono, type MiddlewareHandler, type Next } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { sign, verify } from 'hono/jwt'
 
+// Extend Hono's context to include our user type
+declare module 'hono' {
+  interface ContextVariableMap {
+    user: User
+  }
+}
+
 export interface SaplingAuthConfig {
   jwtSecret: string
-  providers: {
-    google?: GoogleProvider
-    github?: GitHubProvider
+  google?: GoogleProvider
+  github?: GitHubProvider
+  database?: DatabaseAdapter
+  baseUrl?: string
+  redirects?: {
+    success?: string
+    failure?: string
   }
-  database: DatabaseAdapter
   cookieOptions?: {
     secure?: boolean
     httpOnly?: boolean
@@ -20,14 +30,14 @@ export interface SaplingAuthConfig {
 export interface GoogleProvider {
   clientId: string
   clientSecret: string
-  redirectUri: string
+  redirectUri?: string
   scopes?: string[]
 }
 
 export interface GitHubProvider {
   clientId: string
   clientSecret: string
-  redirectUri: string
+  redirectUri?: string
   scopes?: string[]
 }
 
@@ -55,16 +65,89 @@ export interface CreateUserData {
   provider: string
 }
 
+// Simple in-memory database for prototyping
+class InMemoryDatabase implements DatabaseAdapter {
+  private users = new Map<string, User>()
+  private tokens = new Map<string, { userId: string; expiresAt: Date; revokedAt?: Date }>()
+  
+  async findUser(providerId: string, provider: string): Promise<User | null> {
+    for (const user of this.users.values()) {
+      if ((user as any)[`${provider}Id`] === providerId) {
+        return user
+      }
+    }
+    return null
+  }
+  
+  async createUser(userData: CreateUserData): Promise<User> {
+    const user: User = {
+      id: crypto.randomUUID(),
+      email: userData.email,
+      name: userData.name,
+      avatar: userData.avatar,
+      ...{ [`${userData.provider}Id`]: userData.providerId }
+    }
+    this.users.set(user.id, user)
+    return user
+  }
+  
+  async updateUser(id: string, data: Partial<User>): Promise<User> {
+    const user = this.users.get(id)
+    if (!user) throw new Error('User not found')
+    const updated = { ...user, ...data }
+    this.users.set(id, updated)
+    return updated
+  }
+  
+  async createRefreshToken(userId: string, token: string): Promise<void> {
+    this.tokens.set(token, {
+      userId,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    })
+  }
+  
+  async validateRefreshToken(token: string): Promise<{ userId: string } | null> {
+    const tokenData = this.tokens.get(token)
+    if (!tokenData || tokenData.expiresAt < new Date() || tokenData.revokedAt) {
+      return null
+    }
+    return { userId: tokenData.userId }
+  }
+  
+  async revokeRefreshToken(token: string): Promise<void> {
+    const tokenData = this.tokens.get(token)
+    if (tokenData) {
+      tokenData.revokedAt = new Date()
+    }
+  }
+}
+
 export function createSaplingAuth(config: SaplingAuthConfig): Hono {
   const app = new Hono()
+  
+  // Set up defaults
+  const database = config.database || new InMemoryDatabase()
+  const baseUrl = config.baseUrl || 'http://localhost:8080'
+  const redirects = {
+    success: config.redirects?.success || '/dashboard',
+    failure: config.redirects?.failure || '/login'
+  }
+  
+  // Auto-generate redirect URIs if not provided
+  if (config.google && !config.google.redirectUri) {
+    config.google.redirectUri = `${baseUrl}/auth/google/callback`
+  }
+  if (config.github && !config.github.redirectUri) {
+    config.github.redirectUri = `${baseUrl}/auth/github/callback`
+  }
 
   // OAuth initiation endpoints
   app.get('/google', async (c) => {
-    if (!config.providers.google) {
+    if (!config.google) {
       return c.json({ error: 'Google OAuth not configured' }, 400)
     }
     
-    const { clientId, redirectUri, scopes } = config.providers.google
+    const { clientId, redirectUri, scopes } = config.google
     const state = crypto.randomUUID()
     
     // Store state in session/cookie for CSRF protection
@@ -81,7 +164,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
     
     const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth')
     authUrl.searchParams.set('client_id', clientId)
-    authUrl.searchParams.set('redirect_uri', redirectUri)
+    authUrl.searchParams.set('redirect_uri', redirectUri!)
     authUrl.searchParams.set('response_type', 'code')
     authUrl.searchParams.set('scope', requestedScopes)
     authUrl.searchParams.set('state', state)
@@ -90,11 +173,11 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
   })
 
   app.get('/github', async (c) => {
-    if (!config.providers.github) {
+    if (!config.github) {
       return c.json({ error: 'GitHub OAuth not configured' }, 400)
     }
     
-    const { clientId, redirectUri, scopes } = config.providers.github
+    const { clientId, redirectUri, scopes } = config.github
     const state = crypto.randomUUID()
     
     // Store state in session/cookie for CSRF protection
@@ -111,7 +194,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
     
     const authUrl = new URL('https://github.com/login/oauth/authorize')
     authUrl.searchParams.set('client_id', clientId)
-    authUrl.searchParams.set('redirect_uri', redirectUri)
+    authUrl.searchParams.set('redirect_uri', redirectUri!)
     authUrl.searchParams.set('scope', requestedScopes)
     authUrl.searchParams.set('state', state)
     
@@ -120,7 +203,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
 
   // OAuth callback endpoints
   app.get('/google/callback', async (c) => {
-    if (!config.providers.google) {
+    if (!config.google) {
       return c.json({ error: 'Google OAuth not configured' }, 400)
     }
 
@@ -141,11 +224,11 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
-          client_id: config.providers.google.clientId,
-          client_secret: config.providers.google.clientSecret,
+          client_id: config.google.clientId,
+          client_secret: config.google.clientSecret,
           code,
           grant_type: 'authorization_code',
-          redirect_uri: config.providers.google.redirectUri
+          redirect_uri: config.google.redirectUri!
         })
       })
 
@@ -163,10 +246,10 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
       const googleUser = await userResponse.json()
 
       // Find or create user
-      let user = await config.database.findUser(googleUser.id, 'google')
+      let user = await database.findUser(googleUser.id, 'google')
       
       if (!user) {
-        user = await config.database.createUser({
+        user = await database.createUser({
           email: googleUser.email,
           name: googleUser.name,
           avatar: googleUser.picture,
@@ -185,7 +268,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
       )
 
       const refreshToken = crypto.randomUUID()
-      await config.database.createRefreshToken(user.id, refreshToken)
+      await database.createRefreshToken(user.id, refreshToken)
 
       // Set cookies
       setCookie(c, 'auth_token', accessToken, {
@@ -202,7 +285,23 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
         maxAge: 7 * 24 * 60 * 60 // 7 days
       })
 
-      return c.redirect('/dashboard')
+      // Check if client wants JSON response (mobile/API)
+      const acceptHeader = c.req.header('Accept') || ''
+      if (acceptHeader.includes('application/json')) {
+        return c.json({ 
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar
+          },
+          accessToken,
+          refreshToken
+        })
+      }
+
+      return c.redirect(redirects.success)
 
     } catch (error) {
       console.error('OAuth callback error:', error)
@@ -211,7 +310,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
   })
 
   app.get('/github/callback', async (c) => {
-    if (!config.providers.github) {
+    if (!config.github) {
       return c.json({ error: 'GitHub OAuth not configured' }, 400)
     }
 
@@ -235,10 +334,10 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
-          client_id: config.providers.github.clientId,
-          client_secret: config.providers.github.clientSecret,
+          client_id: config.github.clientId,
+          client_secret: config.github.clientSecret,
           code,
-          redirect_uri: config.providers.github.redirectUri
+          redirect_uri: config.github.redirectUri!
         })
       })
 
@@ -270,10 +369,10 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
       const primaryEmail = emails.find((email: any) => email.primary)?.email || githubUser.email
 
       // Find or create user
-      let user = await config.database.findUser(githubUser.id.toString(), 'github')
+      let user = await database.findUser(githubUser.id.toString(), 'github')
       
       if (!user) {
-        user = await config.database.createUser({
+        user = await database.createUser({
           email: primaryEmail,
           name: githubUser.name || githubUser.login,
           avatar: githubUser.avatar_url,
@@ -292,7 +391,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
       )
 
       const refreshToken = crypto.randomUUID()
-      await config.database.createRefreshToken(user.id, refreshToken)
+      await database.createRefreshToken(user.id, refreshToken)
 
       // Set cookies
       setCookie(c, 'auth_token', accessToken, {
@@ -309,7 +408,23 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
         maxAge: 7 * 24 * 60 * 60 // 7 days
       })
 
-      return c.redirect('/dashboard')
+      // Check if client wants JSON response (mobile/API)
+      const acceptHeader = c.req.header('Accept') || ''
+      if (acceptHeader.includes('application/json')) {
+        return c.json({ 
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            avatar: user.avatar
+          },
+          accessToken,
+          refreshToken
+        })
+      }
+
+      return c.redirect(redirects.success)
 
     } catch (error) {
       console.error('GitHub OAuth callback error:', error)
@@ -325,7 +440,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
       return c.json({ error: 'No refresh token' }, 401)
     }
 
-    const tokenData = await config.database.validateRefreshToken(refreshToken)
+    const tokenData = await database.validateRefreshToken(refreshToken)
     
     if (!tokenData) {
       return c.json({ error: 'Invalid refresh token' }, 401)
@@ -355,7 +470,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
     const refreshToken = getCookie(c, 'refresh_token')
     
     if (refreshToken) {
-      await config.database.revokeRefreshToken(refreshToken)
+      await database.revokeRefreshToken(refreshToken)
     }
 
     deleteCookie(c, 'auth_token')
@@ -367,21 +482,137 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
   return app
 }
 
-// Auth middleware
-export function authMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret'>): MiddlewareHandler {
+// Extended auth middleware with automatic token refresh
+export function authMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret' | 'database' | 'cookieOptions'>): MiddlewareHandler {
   return async (c: Context, next: Next) => {
+    const database = config.database || new InMemoryDatabase()
     const token = getCookie(c, 'auth_token')
-    
-    if (!token) {
-      return c.json({ error: 'Unauthorized' }, 401)
+    let user: User | null = null
+
+    // Try to verify existing token
+    if (token) {
+      try {
+        const payload = await verify(token, config.jwtSecret)
+        // Get full user object from database
+        const foundUser = await database.findUser(payload.userId as string, 'google') ||
+                          await database.findUser(payload.userId as string, 'github')
+        if (foundUser) {
+          user = foundUser
+        }
+      } catch (_error) {
+        // Token invalid/expired, will try refresh below
+      }
     }
 
-    try {
-      const payload = await verify(token, config.jwtSecret)
-      c.set('user', { userId: payload.userId })
-      await next()
-    } catch (error) {
-      return c.json({ error: 'Invalid token' }, 401)
+    // If no valid token, try to refresh
+    if (!user) {
+      const refreshToken = getCookie(c, 'refresh_token')
+      if (refreshToken) {
+        const tokenData = await database.validateRefreshToken(refreshToken)
+        if (tokenData) {
+          // Create new access token
+          const newAccessToken = await sign(
+            { 
+              userId: tokenData.userId, 
+              exp: Math.floor(Date.now() / 1000) + (15 * 60)
+            }, 
+            config.jwtSecret
+          )
+
+          setCookie(c, 'auth_token', newAccessToken, {
+            httpOnly: true,
+            secure: config.cookieOptions?.secure ?? true,
+            sameSite: config.cookieOptions?.sameSite ?? 'lax',
+            maxAge: 15 * 60
+          })
+
+          // Get user
+          const foundUser = await database.findUser(tokenData.userId, 'google') ||
+                            await database.findUser(tokenData.userId, 'github')
+          if (foundUser) {
+            user = foundUser
+          }
+        }
+      }
     }
+
+    if (!user) {
+      const accept = c.req.header('Accept') || ''
+      if (accept.includes('application/json')) {
+        return c.json({ error: 'Authentication required' }, 401)
+      }
+      return c.redirect('/login')
+    }
+
+    c.set('user', user)
+    await next()
   }
+}
+
+// Optional auth middleware (doesn't redirect/error if not authenticated)
+export function optionalAuthMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret' | 'database' | 'cookieOptions'>): MiddlewareHandler {
+  return async (c: Context, next: Next) => {
+    const database = config.database || new InMemoryDatabase()
+    const token = getCookie(c, 'auth_token')
+    let user: User | null = null
+
+    if (token) {
+      try {
+        const payload = await verify(token, config.jwtSecret)
+        const foundUser = await database.findUser(payload.userId as string, 'google') ||
+                          await database.findUser(payload.userId as string, 'github')
+        if (foundUser) {
+          user = foundUser
+        }
+      } catch (_error) {
+        // Try refresh
+        const refreshToken = getCookie(c, 'refresh_token')
+        if (refreshToken) {
+          const tokenData = await database.validateRefreshToken(refreshToken)
+          if (tokenData) {
+            const newAccessToken = await sign(
+              { 
+                userId: tokenData.userId, 
+                exp: Math.floor(Date.now() / 1000) + (15 * 60)
+              }, 
+              config.jwtSecret
+            )
+
+            setCookie(c, 'auth_token', newAccessToken, {
+              httpOnly: true,
+              secure: config.cookieOptions?.secure ?? true,
+              sameSite: config.cookieOptions?.sameSite ?? 'lax',
+              maxAge: 15 * 60
+            })
+
+            const foundUser = await database.findUser(tokenData.userId, 'google') ||
+                              await database.findUser(tokenData.userId, 'github')
+            if (foundUser) {
+              user = foundUser
+            }
+          }
+        }
+      }
+    }
+
+    if (user) {
+      c.set('user', user)
+    }
+    
+    await next()
+  }
+}
+
+// Utility function to get authenticated user from context
+export function getUser(c: Context): User | null {
+  return c.get('user') || null
+}
+
+// Utility function to require authentication (throws if not authenticated)
+export function requireUser(c: Context): User {
+  const user = c.get('user')
+  if (!user) {
+    throw new Error('Authentication required')
+  }
+  return user
 }

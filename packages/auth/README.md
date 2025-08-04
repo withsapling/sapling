@@ -1,17 +1,14 @@
 # @sapling/auth
 
-⚠️ **Experimental** - This package is in early development and not ready for production use.
-
-A simple OAuth authentication library for Hono applications with support for Google and GitHub providers.
+The easiest OAuth implementation for Hono. Add Google and GitHub authentication to your app with minimal configuration.
 
 ## Features
 
-- OAuth 2.0 authentication with Google and GitHub
-- JWT-based access tokens with refresh token support
-- Configurable cookie options for security
-- Database adapter pattern for flexible storage
-- Built-in CSRF protection
-- TypeScript support
+- **🚀 Minimal Setup** - Get OAuth working in 3 lines of code
+- **📱 Mobile Ready** - Automatic JSON responses for mobile/API clients
+- **🔒 Secure by Default** - JWT tokens, refresh tokens, CSRF protection
+- **🎨 Flexible** - Bring your own database or use built-in in-memory storage
+- **⚡ Auto-Refresh** - Automatic token refresh with built-in middleware
 
 ## Installation
 
@@ -23,63 +20,125 @@ deno add @sapling/auth
 
 ```typescript
 import { createSaplingAuth, authMiddleware } from '@sapling/auth'
-import { Hono } from 'hono'
 
-const app = new Hono()
-
-// Configure your database adapter
-const database = {
-  findUser: async (providerId, provider) => { /* implementation */ },
-  createUser: async (userData) => { /* implementation */ },
-  updateUser: async (id, data) => { /* implementation */ },
-  createRefreshToken: async (userId, token) => { /* implementation */ },
-  validateRefreshToken: async (token) => { /* implementation */ },
-  revokeRefreshToken: async (token) => { /* implementation */ }
-}
-
-// Create auth routes
+// 1. Create auth routes with minimal config
 const auth = createSaplingAuth({
-  jwtSecret: 'your-secret-key',
-  providers: {
-    google: {
-      clientId: 'your-google-client-id',
-      clientSecret: 'your-google-client-secret',
-      redirectUri: 'http://localhost:3000/auth/google/callback'
-    },
-    github: {
-      clientId: 'your-github-client-id',
-      clientSecret: 'your-github-client-secret',
-      redirectUri: 'http://localhost:3000/auth/github/callback'
-    }
-  },
-  database
+  jwtSecret: process.env.JWT_SECRET!,
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+  }
 })
 
-// Mount auth routes
+// 2. Mount auth routes
 app.route('/auth', auth)
 
-// Protected routes
-app.use('/protected/*', authMiddleware({ jwtSecret: 'your-secret-key' }))
-app.get('/protected/profile', (c) => {
-  const user = c.get('user')
-  return c.json({ userId: user.userId })
+// 3. Protect routes with middleware
+app.get('/dashboard', authMiddleware({ jwtSecret: process.env.JWT_SECRET! }), (c) => {
+  const user = c.get('user') // Full user object available
+  return c.json({ user })
 })
-
-export default app
 ```
 
-## Authentication Flow
+That's it! Your app now has:
+- `/auth/google` - Google OAuth login
+- `/auth/google/callback` - OAuth callback
+- `/auth/refresh` - Token refresh endpoint  
+- `/auth/logout` - Logout endpoint
 
-1. Visit `/auth/google` or `/auth/github` to start OAuth flow
-2. User is redirected to provider for authentication
-3. Provider redirects back to `/auth/{provider}/callback`
-4. Access token (15 min) and refresh token (7 days) are set as HTTP-only cookies
-5. Use `/auth/refresh` to get new access tokens
-6. Use `/auth/logout` to clear tokens
+## Configuration
 
-## Database Adapter
+### Basic Configuration
 
-Implement the `DatabaseAdapter` interface to store users and refresh tokens in your preferred database.
+```typescript
+const auth = createSaplingAuth({
+  jwtSecret: 'your-secret-key',
+  
+  // Enable Google OAuth
+  google: {
+    clientId: 'your-google-client-id',
+    clientSecret: 'your-google-client-secret'
+    // redirectUri auto-generated from baseUrl
+  },
+  
+  // Enable GitHub OAuth
+  github: {
+    clientId: 'your-github-client-id', 
+    clientSecret: 'your-github-client-secret'
+  }
+})
+```
+
+### Advanced Configuration
+
+```typescript
+const auth = createSaplingAuth({
+  jwtSecret: process.env.JWT_SECRET!,
+  
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    redirectUri: 'https://myapp.com/auth/google/callback', // Custom redirect
+    scopes: ['openid', 'email', 'profile'] // Custom scopes
+  },
+  
+  // Custom database (optional - defaults to in-memory)
+  database: myDatabaseAdapter,
+  
+  // Custom URLs (optional)
+  baseUrl: 'https://myapp.com',
+  redirects: {
+    success: '/dashboard', // Where to redirect after login
+    failure: '/login'      // Where to redirect on auth failure
+  },
+  
+  // Cookie options (optional)
+  cookieOptions: {
+    secure: true,
+    sameSite: 'lax',
+    httpOnly: true
+  }
+})
+```
+
+## Mobile App Support
+
+Sapling Auth automatically detects mobile/API clients and returns JSON responses instead of redirects.
+
+### Mobile OAuth Flow
+
+1. **Start OAuth:** Direct users to `/auth/google`
+2. **Handle Callback:** Set `Accept: application/json` header
+3. **Receive Tokens:** Get JSON response with user data and tokens
+
+```typescript
+// Mobile client example
+const response = await fetch('/auth/google/callback?code=...&state=...', {
+  headers: {
+    'Accept': 'application/json'
+  }
+})
+
+const { success, user, accessToken, refreshToken } = await response.json()
+// Store tokens for API requests
+```
+
+## TypeScript Support
+
+Full TypeScript support with proper type inference:
+
+```typescript
+import type { User } from '@sapling/auth'
+
+app.get('/profile', authMiddleware(config), (c) => {
+  const user = c.get('user') // Typed as User
+  return c.json({ 
+    id: user.id,     // ✅ TypeScript knows these exist
+    name: user.name,
+    email: user.email
+  })
+})
+```
 
 ## License
 
