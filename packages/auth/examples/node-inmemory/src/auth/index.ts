@@ -12,8 +12,8 @@ const authConfig = {
   // No database config - uses built-in in-memory storage automatically
   baseUrl: process.env.BASE_URL || 'http://localhost:8080',
   redirects: {
-    success: '/', // Home page after login
-    failure: '/login' // Login page after failed login
+    success: '/dashboard',
+    failure: '/login'
   },
   cookieOptions: {
     secure: process.env.ENV === 'production',

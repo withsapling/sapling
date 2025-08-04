@@ -64,6 +64,11 @@ class InMemoryDatabase implements DatabaseAdapter {
   private tokens = new Map<string, { userId: string; expiresAt: Date; revokedAt?: Date }>()
   
   async findUser(providerId: string, provider: string): Promise<User | null> {
+    // If providerId looks like a UUID, search by user ID instead of provider ID
+    if (providerId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      return this.users.get(providerId) || null
+    }
+    
     for (const user of this.users.values()) {
       if ((user as any)[`${provider}Id`] === providerId) {
         return user
