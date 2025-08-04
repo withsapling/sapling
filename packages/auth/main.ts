@@ -6,7 +6,7 @@ export interface SaplingAuthConfig {
   jwtSecret: string
   google?: GoogleProvider
   github?: GitHubProvider
-  database?: DatabaseAdapter
+  database: DatabaseAdapter
   baseUrl?: string
   redirects?: {
     success?: string
@@ -58,73 +58,12 @@ export interface CreateUserData {
   provider: string
 }
 
-// Simple in-memory database for prototyping
-class InMemoryDatabase implements DatabaseAdapter {
-  private users = new Map<string, User>()
-  private tokens = new Map<string, { userId: string; expiresAt: Date; revokedAt?: Date }>()
-  
-  async findUser(providerId: string, provider: string): Promise<User | null> {
-    // If providerId looks like a UUID, search by user ID instead of provider ID
-    if (providerId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-      return this.users.get(providerId) || null
-    }
-    
-    for (const user of this.users.values()) {
-      if ((user as any)[`${provider}Id`] === providerId) {
-        return user
-      }
-    }
-    return null
-  }
-  
-  async createUser(userData: CreateUserData): Promise<User> {
-    const user: User = {
-      id: crypto.randomUUID(),
-      email: userData.email,
-      name: userData.name,
-      avatar: userData.avatar,
-      ...{ [`${userData.provider}Id`]: userData.providerId }
-    }
-    this.users.set(user.id, user)
-    return user
-  }
-  
-  async updateUser(id: string, data: Partial<User>): Promise<User> {
-    const user = this.users.get(id)
-    if (!user) throw new Error('User not found')
-    const updated = { ...user, ...data }
-    this.users.set(id, updated)
-    return updated
-  }
-  
-  async createRefreshToken(userId: string, token: string): Promise<void> {
-    this.tokens.set(token, {
-      userId,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    })
-  }
-  
-  async validateRefreshToken(token: string): Promise<{ userId: string } | null> {
-    const tokenData = this.tokens.get(token)
-    if (!tokenData || tokenData.expiresAt < new Date() || tokenData.revokedAt) {
-      return null
-    }
-    return { userId: tokenData.userId }
-  }
-  
-  async revokeRefreshToken(token: string): Promise<void> {
-    const tokenData = this.tokens.get(token)
-    if (tokenData) {
-      tokenData.revokedAt = new Date()
-    }
-  }
-}
 
 export function createSaplingAuth(config: SaplingAuthConfig): Hono {
   const app = new Hono()
   
   // Set up defaults
-  const database = config.database || new InMemoryDatabase()
+  const database = config.database
   const baseUrl = config.baseUrl || 'http://localhost:8080'
   const redirects = {
     success: config.redirects?.success || '/dashboard',
@@ -483,7 +422,7 @@ export function createSaplingAuth(config: SaplingAuthConfig): Hono {
 // Extended auth middleware with automatic token refresh
 export function authMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret' | 'database' | 'cookieOptions'>): MiddlewareHandler {
   return async (c: Context, next: Next) => {
-    const database = config.database || new InMemoryDatabase()
+    const database = config.database
     const token = getCookie(c, 'auth_token')
     let user: User | null = null
 
@@ -550,7 +489,7 @@ export function authMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret' | 'da
 // Optional auth middleware (doesn't redirect/error if not authenticated)
 export function optionalAuthMiddleware(config: Pick<SaplingAuthConfig, 'jwtSecret' | 'database' | 'cookieOptions'>): MiddlewareHandler {
   return async (c: Context, next: Next) => {
-    const database = config.database || new InMemoryDatabase()
+    const database = config.database
     const token = getCookie(c, 'auth_token')
     let user: User | null = null
 
