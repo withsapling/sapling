@@ -9,6 +9,11 @@ const authConfig = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     // redirectUri auto-generated from baseUrl
   },
+  github: {
+    clientId: process.env.GITHUB_CLIENT_ID!,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    // redirectUri auto-generated from baseUrl
+  },
   database: createDatabaseAdapter(),
   baseUrl: process.env.BASE_URL || 'http://localhost:8080',
   redirects: {
@@ -17,7 +22,7 @@ const authConfig = {
   },
   cookieOptions: {
     secure: process.env.ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
   }
 }
 

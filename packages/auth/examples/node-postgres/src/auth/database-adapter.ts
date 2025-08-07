@@ -30,6 +30,35 @@ export function createDatabaseAdapter(): DatabaseAdapter {
     },
 
     async createUser(userData: CreateUserData): Promise<User> {
+      // First check if a user with this email already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, userData.email))
+        .limit(1)
+
+      if (existingUser) {
+        // User exists, link the new provider
+        const updateData: any = {
+          lastLogin: new Date()
+        }
+
+        if (userData.provider === 'google') {
+          updateData.googleId = userData.providerId
+        } else if (userData.provider === 'github') {
+          updateData.githubId = userData.providerId
+        }
+
+        const [user] = await db
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, existingUser.id))
+          .returning()
+
+        return user
+      }
+
+      // User doesn't exist, create new user
       const insertData: any = {
         email: userData.email,
         name: userData.name,
