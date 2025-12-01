@@ -1,31 +1,35 @@
 # Sapling Island
 
-A lightweight Web Component for implementing islands architecture in your web applications. Islands architecture allows you to progressively hydrate parts of your page, loading JavaScript and styles only when needed for optimal performance.
+A lightweight Web Component for implementing islands architecture in your web
+applications. Islands architecture allows you to progressively hydrate parts of
+your page, loading JavaScript and styles only when needed for optimal
+performance.
 
 ## Installation
 
 ### NPM
+
 ```bash
 npm install sapling-island
 ```
 
 ```javascript
-import 'sapling-island';
+import "sapling-island";
 // or
-import SaplingIsland from 'sapling-island';
-```
-
-### CDN (Our CDN)
-```html
-<script type="module" src="https://sapling-is.land"></script>
+import SaplingIsland from "sapling-island";
 ```
 
 ### CDN (jsDelivr)
+
 ```html
-<script type="module" src="https://cdn.jsdelivr.net/npm/sapling-island@0.2.0/index.js"></script>
+<script
+  type="module"
+  src="https://cdn.jsdelivr.net/npm/sapling-island@0.2.0/index.js"
+></script>
 ```
 
 ### Recommended CSS
+
 Add this CSS to ensure proper rendering:
 
 ```css
@@ -41,11 +45,16 @@ sapling-island[hydrated] {
 
 ## Overview
 
-Islands architecture is a pattern where most of your page remains static HTML, with interactive "islands" that get hydrated with JavaScript when needed. This approach significantly improves initial page load performance by deferring the loading of non-critical JavaScript.
+Islands architecture is a pattern where most of your page remains static HTML,
+with interactive "islands" that get hydrated with JavaScript when needed. This
+approach significantly improves initial page load performance by deferring the
+loading of non-critical JavaScript.
 
 ## Basic Usage
 
-Wrap any content that requires JavaScript or additional styles in a `<sapling-island>` component. Place scripts and styles inside the `<template>` element to prevent them from loading until needed:
+Wrap any content that requires JavaScript or additional styles in a
+`<sapling-island>` component. Place scripts and styles inside the `<template>`
+element to prevent them from loading until needed:
 
 ```html
 <sapling-island>
@@ -61,10 +70,13 @@ Wrap any content that requires JavaScript or additional styles in a `<sapling-is
 
 ## Loading Strategies
 
-The component supports several loading strategies through the `loading` attribute:
+The component supports several loading strategies through the `loading`
+attribute:
 
 ### Load (Default)
-If no loading attribute is specified, or when set to "load", the island loads immediately when the page loads:
+
+If no loading attribute is specified, or when set to "load", the island loads
+immediately when the page loads:
 
 ```html
 <!-- Without loading attribute (default) -->
@@ -85,6 +97,7 @@ If no loading attribute is specified, or when set to "load", the island loads im
 ```
 
 ### Visible
+
 Loads when the component becomes visible in the viewport:
 
 ```html
@@ -97,6 +110,7 @@ Loads when the component becomes visible in the viewport:
 ```
 
 ### Idle
+
 Loads when the browser is idle:
 
 ```html
@@ -109,6 +123,7 @@ Loads when the browser is idle:
 ```
 
 ### Media Query
+
 Loads when a media query condition is met:
 
 ```html
@@ -129,7 +144,9 @@ Loads when a media query condition is met:
 
 ## Timeout Support
 
-You can specify a timeout for loading strategies using the `timeout` attribute. The island will hydrate when either the loading strategy condition is met OR the timeout is reached, whichever comes first:
+You can specify a timeout for loading strategies using the `timeout` attribute.
+The island will hydrate when either the loading strategy condition is met OR the
+timeout is reached, whichever comes first:
 
 ```html
 <!-- Load when visible, but force load after 5 seconds -->
@@ -137,7 +154,9 @@ You can specify a timeout for loading strategies using the `timeout` attribute. 
   <template>
     <script src="/scripts/important.js" type="module"></script>
   </template>
-  <div>This will load when visible or after 5 seconds, whichever comes first</div>
+  <div>
+    This will load when visible or after 5 seconds, whichever comes first
+  </div>
 </sapling-island>
 
 <!-- Load when idle, but force load after 3 seconds -->
@@ -151,30 +170,38 @@ You can specify a timeout for loading strategies using the `timeout` attribute. 
 
 ## Events
 
-The component dispatches a custom `island:hydrated` event when hydration is complete:
+The component dispatches a custom `island:hydrated` event when hydration is
+complete:
 
 ```javascript
-document.querySelector('sapling-island').addEventListener('island:hydrated', () => {
-  console.log('Island has been hydrated');
-});
+document.querySelector("sapling-island").addEventListener(
+  "island:hydrated",
+  () => {
+    console.log("Island has been hydrated");
+  },
+);
 
 // Or listen globally
-document.addEventListener('island:hydrated', (event) => {
-  console.log('Island hydrated:', event.target);
+document.addEventListener("island:hydrated", (event) => {
+  console.log("Island hydrated:", event.target);
 });
 ```
 
 ## Best Practices
 
 ### Template Content Only
-Place `<script>` and `<style>` tags inside the `<template>` element to prevent them from loading until needed:
+
+Place `<script>` and `<style>` tags inside the `<template>` element to prevent
+them from loading until needed:
 
 ```html
 <sapling-island loading="visible">
   <template>
     <!-- Scripts and styles go here -->
     <script src="/scripts/feature.js" type="module"></script>
-    <style>/* Feature styles */</style>
+    <style>
+      /* Feature styles */
+    </style>
   </template>
   <!-- Actual content goes outside template -->
   <div class="feature">...</div>
@@ -182,7 +209,9 @@ Place `<script>` and `<style>` tags inside the `<template>` element to prevent t
 ```
 
 ### Progressive Enhancement
-Design your islands to enhance existing static content rather than being required for basic functionality:
+
+Design your islands to enhance existing static content rather than being
+required for basic functionality:
 
 ```html
 <!-- Static content works without JavaScript -->
@@ -200,7 +229,7 @@ Design your islands to enhance existing static content rather than being require
 ### Performance Considerations
 
 - Use `visible` for below-the-fold content
-- Use `idle` for non-critical enhancements  
+- Use `idle` for non-critical enhancements
 - Use media queries for device-specific features
 - Set appropriate timeouts for critical features
 
@@ -211,9 +240,9 @@ Design your islands to enhance existing static content rather than being require
   <template>
     <script>
       const time = document.querySelector("time");
-      setInterval(() => {
-        time.textContent = new Date().toLocaleTimeString();
-      }, 1000);
+    setInterval(() => {
+      time.textContent = new Date().toLocaleTimeString();
+    }, 1000);
     </script>
   </template>
   <div class="content">
@@ -225,16 +254,19 @@ Design your islands to enhance existing static content rather than being require
 
 ## Attributes Reference
 
-- `loading` - Loading strategy: `"load"` (default), `"visible"`, `"idle"`, or any CSS media query
+- `loading` - Loading strategy: `"load"` (default), `"visible"`, `"idle"`, or
+  any CSS media query
 - `timeout` - Maximum wait time in milliseconds before forcing load
-- `hydrated` - Added automatically when content is loaded (useful for CSS styling)
+- `hydrated` - Added automatically when content is loaded (useful for CSS
+  styling)
 
 ## Browser Support
 
-The sapling-island component uses standard web APIs and includes fallbacks for broader browser support:
+The sapling-island component uses standard web APIs and includes fallbacks for
+broader browser support:
 
 - Uses IntersectionObserver for visibility detection
-- Falls back to setTimeout when requestIdleCallback is not available  
+- Falls back to setTimeout when requestIdleCallback is not available
 - Supports all modern browsers that implement Custom Elements v1
 - Modern browsers with ES6 module support
 
@@ -247,7 +279,8 @@ The sapling-island component uses standard web APIs and includes fallbacks for b
 - **Flexible loading strategies** - Choose what works best for your content
 - **Islands architecture** - Improve performance with selective hydration
 
-You can read more about advanced usage in the [sapling docs](https://sapling.land/docs/sapling-island).
+You can read more about advanced usage in the
+[sapling docs](https://sapling.land/docs/sapling-island).
 
 ## License
 
