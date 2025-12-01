@@ -1,6 +1,34 @@
 {
-  "version": "0.2.0",
   "name": "sapling-island",
-  "description": "A collection of Sapling Island assets",
-  "license": "MIT"
+  "version": "0.2.1",
+  "description": "A lightweight Web Component for lazy loading content with multiple loading strategies",
+  "main": "index.js",
+  "type": "module",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "keywords": [
+    "web-components",
+    "lazy-loading",
+    "custom-elements",
+    "intersection-observer",
+    "performance"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": ""
+  },
+  "homepage": "",
+  "engines": {
+    "node": ">=14.0.0"
+  }
 }
