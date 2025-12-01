@@ -24,7 +24,7 @@ import SaplingIsland from "sapling-island";
 ```html
 <script
   type="module"
-  src="https://cdn.jsdelivr.net/npm/sapling-island@0.2.0/index.js"
+  src="https://cdn.jsdelivr.net/npm/sapling-island@0.2.2"
 ></script>
 ```
 
